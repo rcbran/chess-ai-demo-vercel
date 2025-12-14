@@ -406,27 +406,38 @@ describe('Chess Engine', () => {
 
   describe('En Passant', () => {
     it('should allow en passant capture', () => {
-      let gameState = initializeGameState()
-      // Set up en passant
-      gameState = makeMove(gameState, { row: 6, col: 4 }, { row: 4, col: 4 }) // e4
-      gameState = makeMove(gameState, { row: 1, col: 3 }, { row: 3, col: 3 }) // d5 (two squares)
+      // Set up true en passant scenario using createTestPosition:
+      // White pawn on e5, black pawn on d5, en passant target is d6
+      // After black moves d7-d5 (two squares), en passant target is d6
+      // White pawn on e5 can capture en passant to d6
+      const gameState = createTestPosition({
+        pieces: [
+          { square: 'e5', type: 'pawn', color: 'white', hasMoved: true },
+          { square: 'd5', type: 'pawn', color: 'black', hasMoved: true },
+          { square: 'e1', type: 'king', color: 'white', hasMoved: true },
+          { square: 'e8', type: 'king', color: 'black', hasMoved: true },
+        ],
+        currentTurn: 'white',
+        enPassantTarget: 'd6', // En passant target after black moved d7-d5
+      })
 
-      // Now white pawn at e4 can capture en passant
-      const from: Position = { row: 4, col: 4 } // e4
-      const to: Position = { row: 3, col: 3 } // d5 (en passant)
+      // White pawn at e5 (row 3, col 4) can capture en passant to d6 (row 2, col 3)
+      const from: Position = { row: 3, col: 4 } // e5
+      const to: Position = { row: 2, col: 3 } // d6 (en passant target)
 
       expect(isValidMove(gameState, from, to)).toBe(true)
 
       // Execute en passant
-      gameState = makeMove(gameState, from, to)
+      const newGameState = makeMove(gameState, from, to)
 
-      // Check that captured pawn is removed
-      expect(getPieceAt(gameState.board, { row: 3, col: 3 })).toEqual({
+      // Check that white pawn moved to d6
+      expect(getPieceAt(newGameState.board, { row: 2, col: 3 })).toEqual({
         type: 'pawn',
         color: 'white',
         hasMoved: true,
       })
-      expect(getPieceAt(gameState.board, { row: 3, col: 4 })).toBeNull() // Original black pawn position
+      // Check that black pawn on d5 was captured (removed from d5)
+      expect(getPieceAt(newGameState.board, { row: 3, col: 3 })).toBeNull() // Original black pawn position (d5)
     })
   })
 

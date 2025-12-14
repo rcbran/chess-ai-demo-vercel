@@ -79,6 +79,17 @@ export const createTestPosition = (options: TestGameStateOptions = {}): GameStat
       }
       gameState.board[pos.row][pos.col] = piece
     }
+
+    // When custom pieces are provided, castling rights should default to false
+    // unless explicitly provided (since custom boards may not have kings/rooks in starting positions)
+    if (options.castlingRights === undefined) {
+      gameState.castlingRights = {
+        whiteKingSide: false,
+        whiteQueenSide: false,
+        blackKingSide: false,
+        blackQueenSide: false,
+      }
+    }
   }
 
   // Set current turn
@@ -86,7 +97,7 @@ export const createTestPosition = (options: TestGameStateOptions = {}): GameStat
     gameState.currentTurn = options.currentTurn
   }
 
-  // Set castling rights
+  // Set castling rights (merge if custom pieces weren't provided, or if explicitly set)
   if (options.castlingRights) {
     gameState.castlingRights = {
       ...gameState.castlingRights,
@@ -95,10 +106,10 @@ export const createTestPosition = (options: TestGameStateOptions = {}): GameStat
   }
 
   // Set en passant target
-  if (options.enPassantTarget) {
-    gameState.enPassantTarget = squareToPosition(options.enPassantTarget)
-  } else if (options.enPassantTarget === null) {
+  if (options.enPassantTarget === null || options.enPassantTarget === '-' || options.enPassantTarget === '') {
     gameState.enPassantTarget = null
+  } else if (options.enPassantTarget) {
+    gameState.enPassantTarget = squareToPosition(options.enPassantTarget)
   }
 
   // Set half move clock

@@ -188,8 +188,9 @@ export const isSquareUnderAttack = (
     for (let col = 0; col < 8; col++) {
       const piece = board[row][col]
       if (piece && piece.color === attackerColor) {
-        const moves = getPieceMoves(board, { row, col }, piece)
-        if (moves.some((move) => move.row === pos.row && move.col === pos.col)) {
+        // Use attack-only moves (pawns only attack diagonally, not forward)
+        const attackMoves = getPieceAttackMoves(board, { row, col }, piece)
+        if (attackMoves.some((move) => move.row === pos.row && move.col === pos.col)) {
           return true
         }
       }
@@ -318,6 +319,31 @@ const getSlidingMoves = (
 }
 
 /**
+ * Get pawn attack moves (diagonal captures only)
+ * Used for attack detection, not regular move generation
+ */
+const getPawnAttackMoves = (board: Board, pos: Position, piece: Piece): Position[] => {
+  const moves: Position[] = []
+  const direction = piece.color === 'white' ? -1 : 1
+
+  // Only diagonal captures (attacks)
+  const captureLeft: Position = { row: pos.row + direction, col: pos.col - 1 }
+  const captureRight: Position = { row: pos.row + direction, col: pos.col + 1 }
+
+  for (const capturePos of [captureLeft, captureRight]) {
+    if (isValidPosition(capturePos)) {
+      // In attack mode, we check if square is attacked (can be empty or enemy piece)
+      const target = getPieceAt(board, capturePos)
+      if (!target || target.color !== piece.color) {
+        moves.push(capturePos)
+      }
+    }
+  }
+
+  return moves
+}
+
+/**
  * Get pawn moves (forward movement and diagonal captures)
  * Note: En passant is handled separately in getValidMoves
  */
@@ -354,6 +380,19 @@ const getPawnMoves = (board: Board, pos: Position, piece: Piece): Position[] => 
   }
 
   return moves
+}
+
+/**
+ * Get attack-only moves for a piece (used for attack detection)
+ * For pawns: only diagonal captures
+ * For other pieces: same as regular moves (they attack the same squares they can move to)
+ */
+const getPieceAttackMoves = (board: Board, pos: Position, piece: Piece): Position[] => {
+  if (piece.type === 'pawn') {
+    return getPawnAttackMoves(board, pos, piece)
+  }
+  // For all other pieces, attack moves are the same as regular moves
+  return getPieceMoves(board, pos, piece)
 }
 
 /**
@@ -559,7 +598,21 @@ const getEnPassantMove = (gameState: GameState, pawnPos: Position): Position | n
     pawnPos.row === enPassantRow - direction &&
     Math.abs(pawnPos.col - enPassantCol) === 1
   ) {
-    return gameState.enPassantTarget
+    // Verify there is an opponent pawn on the captured square
+    // The captured pawn is on the same row as the capturing pawn, same file as en passant target
+    const capturedPawnPos: Position = {
+      row: pawnPos.row, // Same row as the capturing pawn
+      col: enPassantCol, // Same file as the en passant target
+    }
+    const capturedPiece = getPieceAt(gameState.board, capturedPawnPos)
+
+    if (
+      capturedPiece &&
+      capturedPiece.type === 'pawn' &&
+      capturedPiece.color !== piece.color
+    ) {
+      return gameState.enPassantTarget
+    }
   }
 
   return null
@@ -649,7 +702,21 @@ export const makeMove = (
     to.row === gameState.enPassantTarget.row &&
     to.col === gameState.enPassantTarget.col
   ) {
-    return makeEnPassantMove(gameState, from, to)
+    // Verify there is an opponent pawn on the captured square
+    // The captured pawn is on the same row as the capturing pawn, same file as en passant target
+    const capturedPawnPos: Position = {
+      row: from.row, // Same row as the capturing pawn
+      col: gameState.enPassantTarget.col, // Same file as the en passant target
+    }
+    const capturedPiece = getPieceAt(newBoard, capturedPawnPos)
+    
+    if (
+      capturedPiece &&
+      capturedPiece.type === 'pawn' &&
+      capturedPiece.color !== piece.color
+    ) {
+      return makeEnPassantMove(gameState, from, to)
+    }
   }
 
   // Regular move
@@ -673,18 +740,15 @@ export const makeMove = (
       newCastlingRights.blackQueenSide = false
     }
   } else if (piece.type === 'rook') {
-    if (from.col === 0) {
-      if (piece.color === 'white') {
-        newCastlingRights.whiteQueenSide = false
-      } else {
-        newCastlingRights.blackQueenSide = false
-      }
-    } else if (from.col === 7) {
-      if (piece.color === 'white') {
-        newCastlingRights.whiteKingSide = false
-      } else {
-        newCastlingRights.blackKingSide = false
-      }
+    // Only invalidate castling if the original castling rook moves from its starting square
+    if (piece.color === 'white' && from.row === 7 && from.col === 0) {
+      newCastlingRights.whiteQueenSide = false
+    } else if (piece.color === 'white' && from.row === 7 && from.col === 7) {
+      newCastlingRights.whiteKingSide = false
+    } else if (piece.color === 'black' && from.row === 0 && from.col === 0) {
+      newCastlingRights.blackQueenSide = false
+    } else if (piece.color === 'black' && from.row === 0 && from.col === 7) {
+      newCastlingRights.blackKingSide = false
     }
   }
 
@@ -803,14 +867,24 @@ const makeEnPassantMove = (gameState: GameState, pawnFrom: Position, pawnTo: Pos
   const pawn = getPieceAt(newBoard, pawnFrom)
   if (!pawn || pawn.type !== 'pawn') throw new Error('Invalid en passant move')
 
+  // Verify there is an opponent pawn on the captured square
+  const direction = pawn.color === 'white' ? -1 : 1
+  const capturedPawnPos: Position = { row: pawnTo.row - direction, col: pawnTo.col }
+  const capturedPawn = getPieceAt(newBoard, capturedPawnPos)
+  
+  if (
+    !capturedPawn ||
+    capturedPawn.type !== 'pawn' ||
+    capturedPawn.color === pawn.color
+  ) {
+    throw new Error('Invalid en passant move: no opponent pawn to capture')
+  }
+
   // Move the pawn
   newBoard[pawnTo.row][pawnTo.col] = { ...pawn, hasMoved: true }
   newBoard[pawnFrom.row][pawnFrom.col] = null
 
   // Remove the captured pawn (behind the destination)
-  const direction = pawn.color === 'white' ? -1 : 1
-  const capturedPawnPos: Position = { row: pawnTo.row - direction, col: pawnTo.col }
-  const capturedPawn = getPieceAt(newBoard, capturedPawnPos)
   newBoard[capturedPawnPos.row][capturedPawnPos.col] = null
 
   const move: Move = {
@@ -845,11 +919,16 @@ const makeEnPassantMove = (gameState: GameState, pawnFrom: Position, pawnTo: Pos
  * Check if a player has any legal moves available
  */
 const hasAnyValidMoves = (gameState: GameState, color: Color): boolean => {
+  // getValidMoves only returns moves for pieces of the currentTurn color
+  // So we need to temporarily set the perspective to the color we're checking
+  const perspectiveState =
+    gameState.currentTurn === color ? gameState : { ...gameState, currentTurn: color }
+
   for (let row = 0; row < 8; row++) {
     for (let col = 0; col < 8; col++) {
       const piece = getPieceAt(gameState.board, { row, col })
       if (piece && piece.color === color) {
-        const validMoves = getValidMoves(gameState, { row, col })
+        const validMoves = getValidMoves(perspectiveState, { row, col })
         if (validMoves.length > 0) {
           return true
         }
