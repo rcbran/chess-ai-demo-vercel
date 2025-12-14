@@ -5,7 +5,7 @@ export type Color = 'white' | 'black'
 export interface Piece {
   type: PieceType
   color: Color
-  hasMoved?: boolean // For castling and pawn first move
+  hasMoved: boolean // For castling and pawn first move
 }
 
 export type Square = Piece | null

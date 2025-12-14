@@ -267,30 +267,29 @@ describe('Chess Engine', () => {
     })
 
     it('should not allow king to move into check', () => {
-      // Test that the engine correctly prevents moving into check
-      // This is tested indirectly through other tests, but we can verify
-      // that a king cannot move to a square that would be in check
-      let gameState = initializeGameState()
-      
-      // Create a simple position where e2 would be attacked
-      // Move pawns to clear space
-      gameState = makeMove(gameState, { row: 6, col: 4 }, { row: 4, col: 4 }) // e4
-      gameState = makeMove(gameState, { row: 1, col: 4 }, { row: 3, col: 4 }) // e5
-      
-      // The test verifies that the engine correctly validates moves
-      // We know from other tests that check validation works
-      // This test mainly ensures the function exists and works
+      // Create a position where the king would be in check if it moved to e2
+      // White king at e1, black queen at e8 attacking e2
+      const gameState = createTestPosition({
+        pieces: [
+          { square: 'e1', type: 'king', color: 'white', hasMoved: true },
+          { square: 'e8', type: 'queen', color: 'black', hasMoved: true },
+        ],
+        currentTurn: 'white',
+      })
+
       const from: Position = { row: 7, col: 4 } // e1
-      
-      // In the starting position, e2 is safe, so this should be valid
-      // But we can't easily set up a position where e2 is attacked without complex setup
-      // So we'll just verify the function works correctly
+      const to: Position = { row: 6, col: 4 } // e2 (would be in check from queen)
+
+      // Verify that moving to e2 is not a valid move (king would be in check)
+      expect(isValidMove(gameState, from, to)).toBe(false)
+
+      // Verify that e2 is not in the list of valid moves
       const validMoves = getValidMoves(gameState, from)
-      // King should have valid moves that don't leave it in check
+      const moveToE2 = validMoves.find((move) => move.row === to.row && move.col === to.col)
+      expect(moveToE2).toBeUndefined()
+
+      // Verify that other safe moves are still available
       expect(validMoves.length).toBeGreaterThan(0)
-      
-      // Verify that moves to squares under attack are filtered out
-      // This is tested implicitly through the check validation in getValidMoves
     })
   })
 
