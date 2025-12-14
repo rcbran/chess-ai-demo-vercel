@@ -4,6 +4,9 @@
 - **Owner:** rcbran
 - **Repo:** chess-ai-demo-vercel
 
+## Terminal Commands
+- **Working Directory:** The shell is already initialized in the workspace root (`/Users/rcbranham/git/chess-ai-demo-vercel`). Do NOT include `cd /Users/rcbranham/git/chess-ai-demo-vercel` in commands unless switching from a different directory context.
+
 ## CodeRabbit PR Review Workflow
 
 When asked to review or fix CodeRabbit comments on a PR, use these commands:
