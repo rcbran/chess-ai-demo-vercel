@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber'
 import { Scene } from './components/Scene'
 import { InfoPanel } from './components/InfoPanel'
 import { Loader } from './components/Loader'
+import { TitleOverlay } from './components/TitleOverlay'
 import { pieceData, type PieceType } from './data/pieceData'
 import './App.css'
 
@@ -94,10 +95,12 @@ const App = () => {
       </Canvas>
       
       <Loader />
+      <TitleOverlay />
       
       {displayedPiece && (
         <InfoPanel
           piece={pieceData[displayedPiece.type]}
+          pieceType={displayedPiece.type}
           color={displayedPiece.color}
           onClose={handleClosePanel}
           isClosing={isClosing}

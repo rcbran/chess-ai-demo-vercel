@@ -1,15 +1,17 @@
 import { useEffect } from 'react'
-import type { PieceInfo } from '../data/pieceData'
+import type { PieceInfo, PieceType } from '../data/pieceData'
+import { PiecePreview } from './PiecePreview'
 import './InfoPanel.css'
 
 interface InfoPanelProps {
   piece: PieceInfo
+  pieceType: PieceType
   color: 'white' | 'black'
   onClose: () => void
   isClosing?: boolean
 }
 
-export const InfoPanel = ({ piece, color, onClose, isClosing = false }: InfoPanelProps) => {
+export const InfoPanel = ({ piece, pieceType, color, onClose, isClosing = false }: InfoPanelProps) => {
   // Handle escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -37,6 +39,8 @@ export const InfoPanel = ({ piece, color, onClose, isClosing = false }: InfoPane
         <span className={`piece-color ${color}`}>{color}</span>
         <h2 className="piece-title">{piece.title}</h2>
       </div>
+      
+      <PiecePreview pieceType={pieceType} color={color} />
       
       <p className="piece-description">{piece.description}</p>
       

@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+.title-overlay {
+  position: fixed;
+  top: 24px;
+  left: 24px;
+  z-index: 100;
+  pointer-events: none;
+  user-select: none;
+}
+
+.title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin: 0 0 6px 0;
+  
+  /* Cool gradient text */
+  background: linear-gradient(
+    90deg,
+    #ffffff 0%,
+    #a0a0a0 50%,
+    #ffffff 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  
+  /* Subtle glow */
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.15));
+}
+
+.subtitle {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 3px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .title-overlay {
+    top: 16px;
+    left: 16px;
+  }
+  
+  .title {
+    font-size: 20px;
+    letter-spacing: 2px;
+  }
+  
+  .subtitle {
+    font-size: 8px;
+    letter-spacing: 2px;
+  }
+}
+
