@@ -1,4 +1,5 @@
 import { Suspense, useState, useCallback, useRef } from 'react'
+import { AboutModal, AboutButton } from './components/AboutModal'
 import { Canvas } from '@react-three/fiber'
 import { Scene } from './components/Scene'
 import { InfoPanel } from './components/InfoPanel'
@@ -21,6 +22,7 @@ const App = () => {
   const [displayedPiece, setDisplayedPiece] = useState<SelectedPiece | null>(null)
   const [isClosing, setIsClosing] = useState(false)
   const [hoveredPiece, setHoveredPiece] = useState<string | null>(null)
+  const [isAboutOpen, setIsAboutOpen] = useState(false)
   const closeTimeoutRef = useRef<number | null>(null)
 
   const handlePieceClick = useCallback((
@@ -83,7 +85,7 @@ const App = () => {
     <div className="app-container">
       <Canvas 
         camera={{ 
-          position: [0, 0.35, 0.7], 
+          position: [0, 0.35, 0.6], 
           fov: 45,
           near: 0.01,
           far: 100
@@ -111,6 +113,9 @@ const App = () => {
       
       <Loader />
       <TitleOverlay hidden={displayedPiece !== null} />
+      
+      <AboutButton onClick={() => setIsAboutOpen(true)} hidden={displayedPiece !== null || isAboutOpen} />
+      <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
       
       {displayedPiece && (
         <InfoPanel

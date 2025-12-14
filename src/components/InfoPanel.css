@@ -1,7 +1,7 @@
 .info-panel {
   position: fixed;
   top: 24px;
-  width: 400px;
+  width: 500px;
   max-height: calc(100vh - 48px);
   overflow-y: auto;
   
