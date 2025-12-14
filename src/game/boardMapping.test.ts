@@ -135,10 +135,10 @@ describe('worldPositionToPosition', () => {
   })
 
   test('returns null for out of bounds positions', () => {
-    // Too far left (beyond a-file)
+    // Too far right (beyond h-file)
     expect(worldPositionToPosition(0.3, 0)).toBeNull()
 
-    // Too far right (beyond h-file)
+    // Too far left (beyond a-file)
     expect(worldPositionToPosition(-0.3, 0)).toBeNull()
 
     // Too far toward white (beyond rank 1)

@@ -37,9 +37,6 @@ export const BOARD_HALF_SIZE = 3.5 * SQUARE_SIZE // ≈ 0.2026
 /** Y-coordinate for pieces sitting on the board */
 export const PIECE_Y_OFFSET = 0.017392655834555626
 
-/** Board boundaries for bounds checking */
-export const BOARD_MIN = -BOARD_HALF_SIZE - SQUARE_SIZE / 2
-export const BOARD_MAX = BOARD_HALF_SIZE + SQUARE_SIZE / 2
 
 // =============================================================================
 // 3D WORLD POSITION TYPES
