@@ -30,8 +30,9 @@ const PieceModel = ({ pieceType, color }: PiecePreviewProps) => {
       return null
     }
     
-    // Clone the piece
-    const clone = foundPiece.clone()
+    // Clone the piece (type assertion needed because TS can't track mutation in traverse callback)
+    const piece = foundPiece as Object3D
+    const clone = piece.clone()
     
     // Reset the clone's position to origin
     clone.position.set(0, 0, 0)
