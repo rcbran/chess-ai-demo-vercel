@@ -1,0 +1,53 @@
+# Chess AI Demo - Cursor Rules
+
+## GitHub Repository Info
+- **Owner:** rcbran
+- **Repo:** chess-ai-demo-vercel
+
+## CodeRabbit PR Review Workflow
+
+When asked to review or fix CodeRabbit comments on a PR, use these commands:
+
+### 1. List All Review Comments on a PR
+```bash
+gh api repos/rcbran/chess-ai-demo-vercel/pulls/{PR_NUMBER}/comments --jq '.[] | "\(.created_at) | \(.path):\(.line) | \(.body[0:200])..."'
+```
+
+### 2. Get Full Details of Comments (with truncated body)
+```bash
+gh api repos/rcbran/chess-ai-demo-vercel/pulls/{PR_NUMBER}/comments --jq '.[] | "---\nFILE: \(.path):\(.line)\nBODY: \(.body[0:600])\n"'
+```
+
+### 3. Filter by Date (for latest review cycle)
+```bash
+gh api repos/rcbran/chess-ai-demo-vercel/pulls/{PR_NUMBER}/comments --jq '.[] | select(.created_at >= "YYYY-MM-DDTHH:MM:SSZ") | "---\nFILE: \(.path):\(.line)\nBODY: \(.body[0:600])\n"'
+```
+
+### 4. Count Total Comments
+```bash
+gh api repos/rcbran/chess-ai-demo-vercel/pulls/{PR_NUMBER}/comments | jq 'length'
+```
+
+### 5. Get Comments Sorted by Date (newest first)
+```bash
+gh api repos/rcbran/chess-ai-demo-vercel/pulls/{PR_NUMBER}/comments --jq '.[] | "\(.created_at) | \(.path):\(.line) | \(.body[0:120])..."' | sort -r
+```
+
+## CodeRabbit Comment Severity Levels
+- 🔴 **Critical** - Must fix before merge
+- 🟠 **Major** - Should fix, potential bugs
+- 🟡 **Minor** - Nice to have, style/naming issues
+- 💭 **Nitpick** - Optional suggestions
+
+## Workflow Tips
+1. First get comment count to understand scope
+2. Sort by date to identify which comments are from the latest review cycle
+3. Group fixes by file to minimize context switching
+4. Run tests after each fix: `bun test`
+5. Check for lint errors: `bun run lint`
+
+## Project Commands
+- **Dev server:** `bun dev`
+- **Build:** `bun run build`
+- **Test:** `bun test`
+- **Lint:** `bun run lint`
