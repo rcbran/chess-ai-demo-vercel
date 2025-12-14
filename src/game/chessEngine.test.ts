@@ -114,7 +114,7 @@ describe('Chess Engine', () => {
       expect(isValidMove(gameState, from, to)).toBe(true)
     })
 
-    it('should not allow pawn to move forward two squares after first move', () => {
+    it('should only allow pawn two-square advance from starting rank before it has moved', () => {
       let gameState = initializeGameState()
       const from: Position = { row: 6, col: 4 } // e2
       const to: Position = { row: 4, col: 4 } // e4
@@ -311,18 +311,30 @@ describe('Chess Engine', () => {
       expect(gameState.isCheck).toBe(true)
     })
 
-    it('should not allow moves that leave own king in check', () => {
-      let gameState = initializeGameState()
-      gameState = makeMove(gameState, { row: 6, col: 4 }, { row: 4, col: 4 }) // e4
-      gameState = makeMove(gameState, { row: 1, col: 4 }, { row: 3, col: 4 }) // e5
+    it('should not allow moves that leave own king in check (pinned piece)', () => {
+      // Set up a position where a piece is pinned to the king:
+      // White king on e1, white bishop on e2, black rook on e8
+      // The bishop on e2 is pinned - moving it would expose the king to the rook
+      const gameState = createTestPosition({
+        pieces: [
+          { square: 'e1', type: 'king', color: 'white', hasMoved: true },
+          { square: 'e2', type: 'bishop', color: 'white', hasMoved: true },
+          { square: 'e8', type: 'rook', color: 'black', hasMoved: true },
+          { square: 'a8', type: 'king', color: 'black', hasMoved: true },
+        ],
+        currentTurn: 'white',
+      })
 
-      // Try to move a piece that would leave king in check
-      // This is harder to set up, but we can test by moving a piece that exposes the king
-      const from: Position = { row: 7, col: 1 } // b1
-      const to: Position = { row: 5, col: 2 } // c3
+      // Bishop is pinned to the king by the rook
+      const from: Position = { row: 6, col: 4 } // e2 (bishop)
+      const to: Position = { row: 4, col: 2 } // c4 (diagonal move)
 
-      // This should be valid (knight move)
-      expect(isValidMove(gameState, from, to)).toBe(true)
+      // Moving the bishop should be invalid (exposes king to rook)
+      expect(isValidMove(gameState, from, to)).toBe(false)
+
+      // Verify the bishop has no valid moves (all moves would expose king)
+      const validMoves = getValidMoves(gameState, from)
+      expect(validMoves.length).toBe(0)
     })
   })
 
@@ -386,21 +398,37 @@ describe('Chess Engine', () => {
     })
 
     it('should not allow castling if king is in check', () => {
-      let gameState = initializeGameState()
-      // Set up check
-      gameState = makeMove(gameState, { row: 6, col: 4 }, { row: 4, col: 4 }) // e4
-      gameState = makeMove(gameState, { row: 1, col: 3 }, { row: 3, col: 3 }) // d5
-      gameState = makeMove(gameState, { row: 7, col: 3 }, { row: 4, col: 6 }) // Qg4
-      gameState = makeMove(gameState, { row: 1, col: 4 }, { row: 2, col: 4 }) // e6
+      // Set up a position where white king is in check but castling path is clear:
+      // White king on e1, white rook on h1, black queen on e8 giving check
+      const gameState = createTestPosition({
+        pieces: [
+          { square: 'e1', type: 'king', color: 'white', hasMoved: false },
+          { square: 'h1', type: 'rook', color: 'white', hasMoved: false },
+          { square: 'e8', type: 'queen', color: 'black', hasMoved: true },
+          { square: 'a8', type: 'king', color: 'black', hasMoved: true },
+        ],
+        currentTurn: 'white',
+        castlingRights: {
+          whiteKingSide: true,
+          whiteQueenSide: false,
+          blackKingSide: false,
+          blackQueenSide: false,
+        },
+      })
 
-      // Try to castle while in check (should fail)
       const from: Position = { row: 7, col: 4 } // e1
-      const to: Position = { row: 7, col: 6 } // g1
+      const to: Position = { row: 7, col: 6 } // g1 (king-side castle)
 
-      // First check if king is actually in check
-      if (isInCheck(gameState.board, 'white')) {
-        expect(isValidMove(gameState, from, to)).toBe(false)
-      }
+      // Assert the king IS in check (precondition)
+      expect(isInCheck(gameState.board, 'white')).toBe(true)
+
+      // Castling should not be allowed while in check
+      expect(isValidMove(gameState, from, to)).toBe(false)
+
+      // Also verify castling is not in valid moves list
+      const validMoves = getValidMoves(gameState, from)
+      const canCastle = validMoves.some((move) => move.row === to.row && move.col === to.col)
+      expect(canCastle).toBe(false)
     })
   })
 
@@ -443,12 +471,15 @@ describe('Chess Engine', () => {
 
   describe('Pawn Promotion', () => {
     it('should promote pawn when reaching last rank', () => {
-      let gameState = initializeGameState()
-      // Set up pawn promotion scenario
-      // This requires a more complex setup, but we can test the logic
-      // Create a board state where a pawn can promote
-      gameState.board[1][4] = { type: 'pawn', color: 'white', hasMoved: true }
-      gameState.board[0][4] = null // Clear path
+      // Set up a minimal legal position with both kings and a pawn ready to promote
+      const gameState = createTestPosition({
+        pieces: [
+          { square: 'e7', type: 'pawn', color: 'white', hasMoved: true },
+          { square: 'e1', type: 'king', color: 'white', hasMoved: true },
+          { square: 'a8', type: 'king', color: 'black', hasMoved: true },
+        ],
+        currentTurn: 'white',
+      })
 
       const from: Position = { row: 1, col: 4 } // e7
       const to: Position = { row: 0, col: 4 } // e8
@@ -456,14 +487,18 @@ describe('Chess Engine', () => {
       expect(isValidMove(gameState, from, to)).toBe(true)
 
       // Execute promotion (defaults to queen)
-      gameState = makeMove(gameState, from, to)
+      const newGameState = makeMove(gameState, from, to)
 
       // Check that pawn was promoted to queen
-      expect(getPieceAt(gameState.board, { row: 0, col: 4 })).toEqual({
+      expect(getPieceAt(newGameState.board, { row: 0, col: 4 })).toEqual({
         type: 'queen',
         color: 'white',
         hasMoved: true,
       })
+
+      // Verify both kings are still present
+      expect(getPieceAt(newGameState.board, { row: 7, col: 4 })?.type).toBe('king')
+      expect(getPieceAt(newGameState.board, { row: 0, col: 0 })?.type).toBe('king')
     })
   })
 

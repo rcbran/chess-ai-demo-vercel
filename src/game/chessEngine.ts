@@ -50,7 +50,7 @@ export const squareToPosition = (square: SquareNotation): Position => {
  * @returns Chess notation string (e.g., "e4")
  *
  * @example
- * positionToSquare({ row: 4, col: 4 }) // "e5"
+ * positionToSquare({ row: 4, col: 4 }) // "e4"
  * positionToSquare({ row: 7, col: 0 }) // "a1"
  */
 export const positionToSquare = (pos: Position): SquareNotation => {
@@ -748,6 +748,20 @@ export const makeMove = (
     } else if (piece.color === 'black' && from.row === 0 && from.col === 0) {
       newCastlingRights.blackQueenSide = false
     } else if (piece.color === 'black' && from.row === 0 && from.col === 7) {
+      newCastlingRights.blackKingSide = false
+    }
+  }
+
+  // Also invalidate castling rights if a rook is captured on its starting square
+  // This ensures FEN output is correct even when rooks are captured
+  if (capturedPiece) {
+    if (to.row === 7 && to.col === 0) {
+      newCastlingRights.whiteQueenSide = false
+    } else if (to.row === 7 && to.col === 7) {
+      newCastlingRights.whiteKingSide = false
+    } else if (to.row === 0 && to.col === 0) {
+      newCastlingRights.blackQueenSide = false
+    } else if (to.row === 0 && to.col === 7) {
       newCastlingRights.blackKingSide = false
     }
   }
