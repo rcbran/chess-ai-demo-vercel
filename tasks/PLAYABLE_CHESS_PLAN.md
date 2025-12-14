@@ -97,16 +97,28 @@ Add game state:
 
 ### 6. Board Square Mapping (`src/game/boardMapping.ts`)
 
-Create mapping between:
+Create bidirectional mapping between 3D world coordinates and chess notation.
 
-- 3D piece positions → Chess notation (e.g., "e2", "a8")
-- Chess notation → 3D coordinates for move visualization
+**Coordinate System** (camera at positive Z, looking toward negative Z):
+- X-axis: Files (negative X = a-file, positive X = h-file)
+- Z-axis: Ranks (negative Z = rank 1/white, positive Z = rank 8/black)
+- Y-axis: Height above board
+
+**Constants:**
+- `SQUARE_SIZE = 0.0578880906` - Spacing between adjacent squares
+- `PIECE_Y_OFFSET = 0.0174` - Height of pieces above board
 
 **Functions:**
 
-- `squareToPosition(square: string)` - Convert "e4" to [x, y, z]
-- `positionToSquare(x, y, z)` - Convert 3D position to square
-- `getPieceAtSquare(square, boardState)` - Get piece object
+- `squareToWorldPosition(square: string)` - Convert "e4" to {x, y, z}
+- `worldPositionToSquare(x, z)` - Convert 3D position to square notation
+- `positionToWorldPosition(pos)` - Convert Position (row, col) to {x, y, z}
+- `worldPositionToPosition(x, z)` - Convert 3D position to Position
+- `getMeshInitialSquare(meshName)` - Get initial square for a piece mesh
+- `parseMeshName(meshName)` - Extract type, color, index from mesh name
+
+**Note:** `getPieceAtSquare` is implemented in Feature 5 (Move Selection) where
+Scene.tsx has access to the 3D mesh objects.
 
 ### 7. Game UI Components
 
@@ -198,13 +210,15 @@ Each feature will be developed as: **Branch → Implement → PR → Code Review
 - All special moves (castling, en passant, promotion)
 - **No UI changes** - pure logic, testable independently
 
-### Feature 2: Board Square Mapping
+### Feature 2: Board Square Mapping ✅
 
 **Branch:** `feature/board-mapping`
 
 - Create `src/game/boardMapping.ts` - 3D ↔ Chess notation conversion
-- Map 3D piece positions to chess squares (e.g., "e2", "a8")
-- Convert chess notation to 3D coordinates
+- Bidirectional mapping: `squareToWorldPosition`, `worldPositionToSquare`
+- Mesh name parsing: `getMeshInitialSquare`, `parseMeshName`
+- Verified against actual GLTF model positions
+- Comprehensive unit tests (29 tests)
 - **Depends on:** Feature 1 (needs piece types)
 
 ### Feature 3: Game Mode Toggle & Side Selection
