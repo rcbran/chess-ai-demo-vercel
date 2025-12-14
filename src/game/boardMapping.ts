@@ -103,13 +103,21 @@ export const squareToWorldPosition = (square: SquareNotation): WorldPosition => 
  * // Returns { row: 7, col: 4 } (e1)
  */
 export const worldPositionToPosition = (x: number, z: number): Position | null => {
+  // Validate world-space bounds before rounding
+  // Board edges are 0.5 squares beyond the edge-square centers
+  const halfSquare = SQUARE_SIZE / 2
+  const boardEdge = BOARD_HALF_SIZE + halfSquare
+  if (x < -boardEdge || x > boardEdge || z < -boardEdge || z > boardEdge) {
+    return null
+  }
+
   // Calculate column and row from world coordinates
   // X: positive = higher column (toward h-file)
   const col = Math.round(x / SQUARE_SIZE + 3.5)
   // Z: positive = lower row (toward rank 8)
   const row = Math.round(3.5 - z / SQUARE_SIZE)
 
-  // Bounds check
+  // Secondary bounds check (should rarely trigger after world-space check)
   if (col < 0 || col > 7 || row < 0 || row > 7) {
     return null
   }
@@ -216,7 +224,8 @@ export const parseMeshName = (
   meshName: string
 ): { type: PieceType; color: Color; index: number } | null => {
   // Match pattern: piece_<type>_<color>_<index> or piece_<type>_<color>
-  const match = meshName.match(/^piece_(\w+)_(white|black)(?:_(\d+))?$/)
+  // Index must be a positive integer (01-99) when present; no suffix means index 0
+  const match = meshName.match(/^piece_(\w+)_(white|black)(?:_(0[1-9]|[1-9]\d?))?$/)
   if (!match) return null
 
   const pieceTypes: PieceType[] = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn']
@@ -224,6 +233,7 @@ export const parseMeshName = (
   if (!pieceTypes.includes(type)) return null
 
   const color = match[2] as Color
+  // No suffix = index 0 (king/queen), otherwise parse the number
   const index = match[3] ? parseInt(match[3], 10) : 0
 
   return { type, color, index }

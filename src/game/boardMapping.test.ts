@@ -148,6 +148,16 @@ describe('worldPositionToPosition', () => {
     expect(worldPositionToPosition(0, 0.3)).toBeNull()
   })
 
+  test('rejects positions just outside board edge that would round to valid squares', () => {
+    // Position just outside h1 that could round to h1 without proper bounds check
+    // h1 center is at x ≈ 0.2026, board edge is at x ≈ 0.2315
+    // A position at x = 0.24 is outside but could round to col 7
+    expect(worldPositionToPosition(0.24, -0.2026)).toBeNull()
+    
+    // Position just outside a8 that could round to a8
+    expect(worldPositionToPosition(-0.24, 0.2026)).toBeNull()
+  })
+
   test('handles positions near square boundaries', () => {
     // Slightly off-center should still map to correct square
     const centerOfE4 = positionToWorldPosition({ row: 4, col: 4 })
@@ -228,6 +238,14 @@ describe('parseMeshName', () => {
     expect(parseMeshName('invalid')).toBeNull()
     expect(parseMeshName('piece_invalid_white_01')).toBeNull()
     expect(parseMeshName('piece_pawn_red_01')).toBeNull()
+  })
+
+  test('rejects _00 and leading zero indices', () => {
+    // _00 should not match (king/queen use no suffix for index 0)
+    expect(parseMeshName('piece_king_white_00')).toBeNull()
+    expect(parseMeshName('piece_pawn_black_00')).toBeNull()
+    // _0 alone should not match
+    expect(parseMeshName('piece_rook_white_0')).toBeNull()
   })
 })
 
