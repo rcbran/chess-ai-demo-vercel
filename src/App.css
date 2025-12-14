@@ -1,7 +1,7 @@
 .app-container {
   width: 100%;
   height: 100vh;
-  background: #000;
+  background: radial-gradient(ellipse at center, #1a1510 0%, #0d0a08 50%, #000 100%);
 }
 
 canvas {

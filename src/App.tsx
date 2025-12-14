@@ -4,6 +4,8 @@ import { Scene } from './components/Scene'
 import { InfoPanel } from './components/InfoPanel'
 import { Loader } from './components/Loader'
 import { TitleOverlay } from './components/TitleOverlay'
+import { Effects } from './components/Effects'
+import { AnimatedBackground, AmbientParticles } from './components/AnimatedBackground'
 import { pieceData, type PieceType } from './data/pieceData'
 import './App.css'
 
@@ -11,6 +13,7 @@ interface SelectedPiece {
   type: PieceType
   color: 'white' | 'black'
   meshName: string
+  side: 'left' | 'right'
 }
 
 const App = () => {
@@ -23,13 +26,18 @@ const App = () => {
   const handlePieceClick = useCallback((
     pieceType: PieceType, 
     color: 'white' | 'black', 
-    meshName: string
+    meshName: string,
+    screenX: number
   ) => {
     // Clear any pending close timeout
     if (closeTimeoutRef.current) {
       clearTimeout(closeTimeoutRef.current)
       closeTimeoutRef.current = null
     }
+    
+    // Determine which side to show the panel on (opposite of where piece was clicked)
+    // screenX is normalized from -1 (left) to 1 (right)
+    const side: 'left' | 'right' = screenX > 0 ? 'left' : 'right'
     
     // If any piece is already selected (modal is open), just close it
     if (selectedPiece) {
@@ -42,8 +50,8 @@ const App = () => {
     } else {
       // No piece selected, open new piece
       setIsClosing(false)
-      setSelectedPiece({ type: pieceType, color, meshName })
-      setDisplayedPiece({ type: pieceType, color, meshName })
+      setSelectedPiece({ type: pieceType, color, meshName, side })
+      setDisplayedPiece({ type: pieceType, color, meshName, side })
     }
   }, [selectedPiece])
 
@@ -75,7 +83,7 @@ const App = () => {
     <div className="app-container">
       <Canvas 
         camera={{ 
-          position: [0, 0.4, 0.65], 
+          position: [0, 0.45, 0.75], 
           fov: 45,
           near: 0.01,
           far: 100
@@ -84,6 +92,10 @@ const App = () => {
         onPointerMissed={handleCanvasClick}
       >
         <Suspense fallback={null}>
+          {/* Animated starfield background */}
+          <AnimatedBackground />
+          <AmbientParticles />
+          
           <Scene 
             onPieceClick={handlePieceClick}
             onPieceHover={handlePieceHover}
@@ -91,17 +103,21 @@ const App = () => {
             selectedPiece={selectedPiece?.meshName ?? null}
             hoveredPiece={hoveredPiece}
           />
+          
+          {/* Post-processing effects */}
+          <Effects />
         </Suspense>
       </Canvas>
       
       <Loader />
-      <TitleOverlay />
+      <TitleOverlay hidden={displayedPiece !== null} />
       
       {displayedPiece && (
         <InfoPanel
           piece={pieceData[displayedPiece.type]}
           pieceType={displayedPiece.type}
           color={displayedPiece.color}
+          side={displayedPiece.side}
           onClose={handleClosePanel}
           isClosing={isClosing}
         />

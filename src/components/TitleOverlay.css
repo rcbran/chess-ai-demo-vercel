@@ -7,6 +7,17 @@
   z-index: 100;
   pointer-events: none;
   user-select: none;
+  
+  /* Fade transition matching modal timing */
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+}
+
+.title-overlay.hidden {
+  opacity: 0;
+  transform: translateY(-10px);
+  pointer-events: none;
 }
 
 .title {

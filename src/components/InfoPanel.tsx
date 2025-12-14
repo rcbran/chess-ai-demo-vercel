@@ -7,11 +7,12 @@ interface InfoPanelProps {
   piece: PieceInfo
   pieceType: PieceType
   color: 'white' | 'black'
+  side: 'left' | 'right'
   onClose: () => void
   isClosing?: boolean
 }
 
-export const InfoPanel = ({ piece, pieceType, color, onClose, isClosing = false }: InfoPanelProps) => {
+export const InfoPanel = ({ piece, pieceType, color, side, onClose, isClosing = false }: InfoPanelProps) => {
   // Handle escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -25,7 +26,7 @@ export const InfoPanel = ({ piece, pieceType, color, onClose, isClosing = false 
   }, [onClose])
 
   return (
-    <div className={`info-panel ${isClosing ? 'closing' : ''}`}>
+    <div className={`info-panel ${side} ${isClosing ? 'closing' : ''}`}>
       <button 
         className="close-button" 
         onClick={onClose}

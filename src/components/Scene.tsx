@@ -5,7 +5,7 @@ import { Color, MeshStandardMaterial, type Group, type Mesh, type Object3D, type
 import { getPieceTypeFromName, getPieceColorFromName, type PieceType } from '../data/pieceData'
 
 interface SceneProps {
-  onPieceClick: (pieceType: PieceType, color: 'white' | 'black', meshName: string) => void
+  onPieceClick: (pieceType: PieceType, color: 'white' | 'black', meshName: string, screenX: number) => void
   onPieceHover: (meshName: string | null) => void
   onBoardClick: () => void
   selectedPiece: string | null
@@ -128,7 +128,9 @@ export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece,
       const pieceColor = getPieceColorFromName(target.name)
       
       if (pieceType && pieceColor) {
-        onPieceClick(pieceType, pieceColor, target.name)
+        // Get the screen X position from the pointer event
+        const screenX = event.pointer.x // Normalized -1 to 1
+        onPieceClick(pieceType, pieceColor, target.name, screenX)
       }
     }
   }
@@ -160,9 +162,9 @@ export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece,
       
       // Slow down rotation when hovering
       if (hoveredPiece && !selectedPiece) {
-        controlsRef.current.autoRotateSpeed = 0.1
+        controlsRef.current.autoRotateSpeed = 0.05
       } else {
-        controlsRef.current.autoRotateSpeed = 0.5
+        controlsRef.current.autoRotateSpeed = 0.25
       }
     }
   }, [selectedPiece, hoveredPiece])
@@ -196,7 +198,7 @@ export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece,
       <OrbitControls 
         ref={controlsRef}
         autoRotate
-        autoRotateSpeed={0.5}
+        autoRotateSpeed={0.25}
       />
     </>
   )

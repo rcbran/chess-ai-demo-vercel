@@ -1,8 +1,7 @@
 .info-panel {
   position: fixed;
   top: 24px;
-  right: 24px;
-  width: 340px;
+  width: 400px;
   max-height: calc(100vh - 48px);
   overflow-y: auto;
   
@@ -20,15 +19,25 @@
     0 4px 24px rgba(0, 0, 0, 0.4),
     0 0 0 1px rgba(255, 255, 255, 0.05) inset;
   
-  /* Animation */
-  animation: slideIn 0.3s ease-out;
   transition: opacity 0.25s ease-out, transform 0.25s ease-out;
   
   color: #fff;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-@keyframes slideIn {
+/* Right side positioning (default) */
+.info-panel.right {
+  right: 24px;
+  animation: slideInRight 0.3s ease-out;
+}
+
+/* Left side positioning */
+.info-panel.left {
+  left: 24px;
+  animation: slideInLeft 0.3s ease-out;
+}
+
+@keyframes slideInRight {
   from {
     opacity: 0;
     transform: translateX(20px);
@@ -39,9 +48,26 @@
   }
 }
 
-.info-panel.closing {
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.info-panel.right.closing {
   opacity: 0;
   transform: translateX(20px);
+  pointer-events: none;
+}
+
+.info-panel.left.closing {
+  opacity: 0;
+  transform: translateX(-20px);
   pointer-events: none;
 }
 
