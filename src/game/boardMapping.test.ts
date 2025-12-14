@@ -4,7 +4,7 @@
  * Tests for bidirectional 3D ↔ Chess notation conversion
  */
 
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, it, test } from 'vitest'
 import {
   SQUARE_SIZE,
   BOARD_HALF_SIZE,
