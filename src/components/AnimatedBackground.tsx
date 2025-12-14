@@ -8,26 +8,29 @@ interface AnimatedBackgroundProps {
   count?: number
 }
 
+// Helper function to generate random positions (outside component to avoid purity issues)
+const generateSpherePositions = (count: number): Float32Array => {
+  const pos = new Float32Array(count * 3)
+  
+  for (let i = 0; i < count; i++) {
+    // Distribute in a large sphere around the scene
+    const radius = 15 + Math.random() * 25
+    const theta = Math.random() * Math.PI * 2
+    const phi = Math.acos(2 * Math.random() - 1)
+    
+    pos[i * 3] = radius * Math.sin(phi) * Math.cos(theta)
+    pos[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta)
+    pos[i * 3 + 2] = radius * Math.cos(phi)
+  }
+  
+  return pos
+}
+
 export const AnimatedBackground = ({ count = 650 }: AnimatedBackgroundProps) => {
   const pointsRef = useRef<PointsType>(null)
   
   // Generate random positions in a sphere
-  const positions = useMemo(() => {
-    const pos = new Float32Array(count * 3)
-    
-    for (let i = 0; i < count; i++) {
-      // Distribute in a large sphere around the scene
-      const radius = 15 + Math.random() * 25
-      const theta = Math.random() * Math.PI * 2
-      const phi = Math.acos(2 * Math.random() - 1)
-      
-      pos[i * 3] = radius * Math.sin(phi) * Math.cos(theta)
-      pos[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta)
-      pos[i * 3 + 2] = radius * Math.cos(phi)
-    }
-    
-    return pos
-  }, [count])
+  const positions = useMemo(() => generateSpherePositions(count), [count])
   
   // Almost imperceptible rotation
   useFrame((_, delta) => {
@@ -52,23 +55,26 @@ export const AnimatedBackground = ({ count = 650 }: AnimatedBackgroundProps) => 
   )
 }
 
+// Helper function to generate ambient particle positions
+const generateAmbientPositions = (): Float32Array => {
+  const count = 35
+  const pos = new Float32Array(count * 3)
+  
+  for (let i = 0; i < count; i++) {
+    // Scattered around the chess board area
+    pos[i * 3] = (Math.random() - 0.5) * 2
+    pos[i * 3 + 1] = Math.random() * 1.5
+    pos[i * 3 + 2] = (Math.random() - 0.5) * 2
+  }
+  
+  return pos
+}
+
 // Floating ambient particles closer to the board
 export const AmbientParticles = () => {
   const pointsRef = useRef<PointsType>(null)
   
-  const positions = useMemo(() => {
-    const count = 35
-    const pos = new Float32Array(count * 3)
-    
-    for (let i = 0; i < count; i++) {
-      // Scattered around the chess board area
-      pos[i * 3] = (Math.random() - 0.5) * 2
-      pos[i * 3 + 1] = Math.random() * 1.5
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 2
-    }
-    
-    return pos
-  }, [])
+  const positions = useMemo(() => generateAmbientPositions(), [])
   
   useFrame((state) => {
     if (pointsRef.current) {

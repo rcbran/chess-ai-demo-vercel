@@ -210,18 +210,18 @@ Each feature will be developed as: **Branch → Implement → PR → Code Review
 - All special moves (castling, en passant, promotion)
 - **No UI changes** - pure logic, testable independently
 
-### Feature 2: Board Square Mapping ✅
+### Feature 2: Board Square Mapping ✅ **COMPLETED**
 
-**Branch:** `feature/board-mapping`
+**Branch:** `feature/board-mapping` ✅ **MERGED**
 
-- Create `src/game/boardMapping.ts` - 3D ↔ Chess notation conversion
-- Bidirectional mapping: `squareToWorldPosition`, `worldPositionToSquare`
-- Mesh name parsing: `getMeshInitialSquare`, `parseMeshName`
-- Verified against actual GLTF model positions
-- Comprehensive unit tests (29 tests)
+- ✅ Create `src/game/boardMapping.ts` - 3D ↔ Chess notation conversion
+- ✅ Bidirectional mapping: `squareToWorldPosition`, `worldPositionToSquare`
+- ✅ Mesh name parsing: `getMeshInitialSquare`, `parseMeshName`
+- ✅ Verified against actual GLTF model positions
+- ✅ Comprehensive unit tests (29 tests)
 - **Depends on:** Feature 1 (needs piece types)
 
-### Feature 3: Game Mode Toggle & Side Selection
+### Feature 3: Game Mode Toggle & Side Selection 🎯 **NEXT**
 
 **Branch:** `feature/game-mode-toggle`
 
@@ -230,6 +230,8 @@ Each feature will be developed as: **Branch → Implement → PR → Code Review
 - Create side selection modal (White/Black)
 - Toggle between demo and play modes
 - **No gameplay yet** - just mode switching
+
+**📋 Detailed Plan:** See `tasks/FEATURE_3_GAME_MODE_TOGGLE.md` for complete implementation details
 
 ### Feature 4: Camera Locking for Play Mode
 
