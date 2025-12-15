@@ -5,7 +5,7 @@ import { Color as ThreeColor, MeshStandardMaterial, type Group, type Mesh, type 
 import { getPieceTypeFromName, getPieceColorFromName, type PieceType } from '../data/pieceData'
 import type { Color, GameState, Position } from '../game/types'
 import { MoveIndicator } from './MoveIndicator'
-import { worldPositionToPosition, getMeshInitialSquare } from '../game/boardMapping'
+import { worldPositionToPosition, getMeshInitialSquare, parseMeshName } from '../game/boardMapping'
 import { squareToPosition, getPieceAt } from '../game/chessEngine'
 
 interface SceneProps {
@@ -160,18 +160,120 @@ export const Scene = ({
     })
   }, [pieceMeshes, createHighlightMaterial])
 
+  // Helper function to update piece position when a move is executed
+  // This will be called from move execution code in Feature 6
+  const _updatePiecePosition = useCallback((meshName: string, from: Position, to: Position, capturedMeshName?: string | null) => {
+    // Update the moving piece's position
+    pieceSquares.current.set(meshName, to)
+    
+    // Remove captured piece if provided
+    if (capturedMeshName) {
+      pieceSquares.current.delete(capturedMeshName)
+    }
+  }, [])
+
+  // Rebuild pieceSquares from gameState.board by matching pieces to meshes
+  const rebuildPieceSquares = useCallback(() => {
+    if (!gameState || gameMode !== 'play') return
+    
+    // Create a map of available meshes by type/color
+    const availableMeshesByType = new Map<string, string[]>()
+    pieceMeshes.forEach((_, meshName) => {
+      const parsed = parseMeshName(meshName)
+      if (!parsed) return
+      
+      const key = `${parsed.type}-${parsed.color}`
+      if (!availableMeshesByType.has(key)) {
+        availableMeshesByType.set(key, [])
+      }
+      availableMeshesByType.get(key)!.push(meshName)
+    })
+    
+    // Track which meshes we've already assigned
+    const assignedMeshes = new Set<string>()
+    
+    // Get current pieceSquares to use as hints for stable matching
+    const currentPositions = new Map<string, Position>()
+    pieceSquares.current.forEach((pos, meshName) => {
+      currentPositions.set(meshName, pos)
+    })
+    
+    // First pass: try to keep meshes at their current positions (stable matching)
+    for (const [meshName, currentPos] of currentPositions.entries()) {
+      const piece = getPieceAt(gameState.board, currentPos)
+      const parsed = parseMeshName(meshName)
+      if (piece && parsed && piece.type === parsed.type && piece.color === parsed.color) {
+        // This mesh is still at this position - keep it
+        pieceSquares.current.set(meshName, currentPos)
+        assignedMeshes.add(meshName)
+      }
+    }
+    
+    // Second pass: assign remaining pieces to remaining meshes
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = getPieceAt(gameState.board, { row, col })
+        if (!piece) continue
+        
+        // Check if this position already has a mesh assigned
+        let alreadyAssigned = false
+        for (const [, pos] of pieceSquares.current.entries()) {
+          if (pos.row === row && pos.col === col) {
+            alreadyAssigned = true
+            break
+          }
+        }
+        if (alreadyAssigned) continue
+        
+        // Find an available mesh of matching type/color
+        const key = `${piece.type}-${piece.color}`
+        const availableMeshes = availableMeshesByType.get(key) || []
+        
+        for (const meshName of availableMeshes) {
+          if (!assignedMeshes.has(meshName)) {
+            pieceSquares.current.set(meshName, { row, col })
+            assignedMeshes.add(meshName)
+            break
+          }
+        }
+      }
+    }
+    
+    // Third pass: remove meshes for pieces that are no longer on the board
+    for (const [meshName, pos] of Array.from(pieceSquares.current.entries())) {
+      const pieceAtPos = getPieceAt(gameState.board, pos)
+      const parsed = parseMeshName(meshName)
+      if (!pieceAtPos || !parsed || pieceAtPos.type !== parsed.type || pieceAtPos.color !== parsed.color) {
+        pieceSquares.current.delete(meshName)
+      }
+    }
+  }, [gameState, gameMode, pieceMeshes])
+
   // Initialize piece positions when entering play mode
   useEffect(() => {
     if (gameMode === 'play' && gameState) {
-      pieceSquares.current.clear()
-      pieceMeshes.forEach((_, meshName) => {
-        const square = getMeshInitialSquare(meshName)
-        if (square) {
-          pieceSquares.current.set(meshName, squareToPosition(square))
-        }
-      })
+      // If no moves have been made, use initial positions
+      if (gameState.moveHistory.length === 0) {
+        pieceSquares.current.clear()
+        pieceMeshes.forEach((_, meshName) => {
+          const square = getMeshInitialSquare(meshName)
+          if (square) {
+            pieceSquares.current.set(meshName, squareToPosition(square))
+          }
+        })
+      } else {
+        // Rebuild from current board state
+        rebuildPieceSquares()
+      }
     }
-  }, [gameMode, gameState, pieceMeshes])
+  }, [gameMode, gameState, pieceMeshes, rebuildPieceSquares])
+
+  // Sync pieceSquares when board changes (watch moveHistory length as proxy)
+  useEffect(() => {
+    if (gameMode === 'play' && gameState && gameState.moveHistory.length > 0) {
+      rebuildPieceSquares()
+    }
+  }, [gameMode, gameState, rebuildPieceSquares])
 
   // Get the mesh name for a piece at a given position
   const getMeshAtPosition = useCallback((position: Position): string | null => {
