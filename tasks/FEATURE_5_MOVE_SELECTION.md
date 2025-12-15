@@ -1,4 +1,8 @@
-# Feature 5: Move Selection & Visual Feedback
+# Feature 5: Move Selection & Visual Feedback ✅ COMPLETE
+
+**Branch:** `feature/move-selection`  
+**PR:** [#7](https://github.com/rcbran/chess-ai-demo-vercel/pull/7)  
+**Status:** ✅ Merged
 
 ## Overview
 
@@ -6,8 +10,6 @@ This feature adds the core interaction for playing chess:
 1. Click a piece to select it
 2. See valid moves highlighted on the board
 3. Click a destination to prepare for move execution (Feature 6)
-
-**Branch:** `feature/move-selection`
 
 ## Dependencies
 

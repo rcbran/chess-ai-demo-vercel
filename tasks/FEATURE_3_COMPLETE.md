@@ -1,8 +1,8 @@
 # Feature 3: Game Mode Toggle & Side Selection ✅ COMPLETE
 
 **Branch:** `feature/game-mode-toggle`  
-**PR:** https://github.com/rcbran/chess-ai-demo-vercel/pull/4  
-**Status:** Ready for Review
+**PR:** [#4](https://github.com/rcbran/chess-ai-demo-vercel/pull/4)  
+**Status:** ✅ Merged
 
 ## Implementation Summary
 

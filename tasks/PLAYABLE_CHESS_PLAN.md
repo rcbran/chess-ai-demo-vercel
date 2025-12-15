@@ -244,33 +244,35 @@ Each feature will be developed as: **Branch → Implement → PR → Code Review
 - ✅ Smooth 800ms camera animation with ease-out
 - **Depends on:** Feature 3 (needs game mode state)
 
-### Feature 5: Move Selection & Visual Feedback 🎯 **NEXT**
+### Feature 5: Move Selection & Visual Feedback ✅ **COMPLETED**
 
-**Branch:** `feature/move-selection`
+**Branch:** `feature/move-selection` ✅ **MERGED**
 
 - ✅ Removed description text from side selection modal buttons
-- Modify click handling in `Scene.tsx` for play mode
-- Select pieces (validate it's player's turn and piece)
-- Calculate and display valid moves
-- Create `MoveIndicator.tsx` component for valid move highlights
-- Show selected piece glow (reuse existing highlight)
-- **Player always moves first** - regardless of chosen color (white or black)
+- ✅ Modified click handling in `Scene.tsx` for play mode
+- ✅ Select pieces (validate it's player's turn and piece)
+- ✅ Calculate and display valid moves
+- ✅ Created `MoveIndicator.tsx` component for valid move highlights
+- ✅ Show selected piece glow (reuse existing highlight)
+- ✅ **Player always moves first** - regardless of chosen color (white or black)
 - **Depends on:** Features 1, 2, 3, 4 (all complete)
 
 **📋 Detailed Plan:** See `tasks/FEATURE_5_MOVE_SELECTION.md` for complete implementation details
 
-**Note:** In standard chess, white moves first. However, for better UX in this demo, the player always makes the first move regardless of their chosen side. When playing as black, the player moves first, then the AI (as white) responds.
-
-### Feature 6: Move Execution & Animation
+### Feature 6: Move Execution & Animation 🎯 **NEXT**
 
 **Branch:** `feature/move-execution`
 
-- Execute moves when clicking valid destination
-- Update board state after move
-- Animate piece movement using `@react-spring/three`
-- Handle captured pieces (fade out)
-- Check for check/checkmate after moves
+- Execute moves when clicking valid destination (use existing `makeMove`)
+- Animate piece movement using `useFrame` (400ms ease-out)
+- Handle captured pieces (fade out 250ms)
+- Add red glow for king in check
+- Reset pieces correctly when exiting to demo mode
 - **Depends on:** Feature 5
+
+**📋 Detailed Plan:** See `tasks/FEATURE_6_MOVE_EXECUTION.md` for complete implementation details
+
+**Note:** The chess engine's `makeMove` function already handles all move logic including castling, en passant, promotion, and check/checkmate detection. This feature focuses on the visual animation layer.
 
 ### Feature 7: AI Integration
 
