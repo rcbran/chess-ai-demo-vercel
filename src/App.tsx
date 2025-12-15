@@ -1,7 +1,5 @@
 import { Suspense, useState, useCallback, useRef } from 'react'
 import { AboutModal, AboutButton } from './components/AboutModal'
-import { SideSelectionModal } from './components/SideSelectionModal'
-import { ExitPlayButton } from './components/ExitPlayButton'
 import { Canvas } from '@react-three/fiber'
 import { Scene } from './components/Scene'
 import { InfoPanel } from './components/InfoPanel'
@@ -26,8 +24,7 @@ const App = () => {
   // Game mode state
   const [gameMode, setGameMode] = useState<GameMode>('demo')
   // playerColor will be used in Feature 4 for camera locking
-  const [_playerColor, setPlayerColor] = useState<Color | null>(null)
-  const [isSideSelectionOpen, setIsSideSelectionOpen] = useState(false)
+  const [_playerColor, _setPlayerColor] = useState<Color | null>(null)
   
   // Demo mode state
   const [selectedPiece, setSelectedPiece] = useState<SelectedPiece | null>(null)
@@ -40,28 +37,7 @@ const App = () => {
   // Game mode handlers
   const handlePlayButtonClick = useCallback(() => {
     setGameMode('play')
-    setIsSideSelectionOpen(true)
-  }, [])
-
-  const handleSideSelection = useCallback((color: Color) => {
-    setPlayerColor(color)
-    setIsSideSelectionOpen(false)
-    // Future: Initialize game state, lock camera, etc.
-    console.log(`Game mode: play, Player color: ${color}`)
-  }, [])
-
-  const handleCloseSideSelection = useCallback(() => {
-    // If user closes modal without selecting, return to demo mode
-    setIsSideSelectionOpen(false)
-    setGameMode('demo')
-    setPlayerColor(null)
-  }, [])
-
-  const handleExitToDemo = useCallback(() => {
-    setGameMode('demo')
-    setPlayerColor(null)
-    setIsSideSelectionOpen(false)
-    // Future: Clear game state, reset camera, etc.
+    // TODO: Feature 4 - Add side selection and camera locking
   }, [])
 
   const handlePieceClick = useCallback((
@@ -170,25 +146,12 @@ const App = () => {
         showPlayButton={gameMode === 'demo' && !isAboutOpen}
       />
       
-      {/* Exit button - only show in play mode */}
-      <ExitPlayButton 
-        onClick={handleExitToDemo} 
-        hidden={gameMode === 'demo'} 
-      />
-      
       {/* About button - show in demo mode */}
       <AboutButton 
         onClick={() => setIsAboutOpen(true)} 
         hidden={gameMode === 'play' || displayedPiece !== null || isAboutOpen} 
       />
       <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
-      
-      {/* Side selection modal - show when entering play mode */}
-      <SideSelectionModal 
-        isOpen={isSideSelectionOpen} 
-        onSelect={handleSideSelection}
-        onClose={handleCloseSideSelection}
-      />
       
       {/* Info panel - only show in demo mode */}
       {gameMode === 'demo' && displayedPiece && (
