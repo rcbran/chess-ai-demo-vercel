@@ -215,14 +215,29 @@ export const Scene = ({
       const elapsed = currentTime - fade.startTime
       const progress = Math.min(elapsed / fade.duration, 1)
       
-      // Fade opacity
+      // Fade opacity - clone materials on first frame to avoid modifying shared GLTF materials
       fade.mesh.traverse((child) => {
         if ((child as Mesh).isMesh) {
           const mesh = child as Mesh
           const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
-          materials.forEach(mat => {
+          
+          // Clone materials if not already cloned (check via userData flag)
+          const needsClone = materials.some(mat => mat && !mat.userData?.isClonedForFade)
+          if (needsClone) {
+            const clonedMaterials = materials.map(mat => {
+              if (!mat) return mat
+              const cloned = mat.clone()
+              cloned.userData = { ...cloned.userData, isClonedForFade: true }
+              cloned.transparent = true
+              return cloned
+            })
+            mesh.material = Array.isArray(mesh.material) ? clonedMaterials : clonedMaterials[0]
+          }
+          
+          // Now safely modify the cloned materials
+          const currentMats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+          currentMats.forEach(mat => {
             if (mat) {
-              mat.transparent = true
               mat.opacity = 1 - progress
             }
           })
@@ -381,18 +396,32 @@ export const Scene = ({
     activeAnimations.current.clear()
     fadingPieces.current.clear()
     
-    // Make all captured pieces visible again and reset opacity
+    // Make all captured pieces visible again and restore original materials
     capturedMeshes.current.forEach(meshName => {
       const mesh = pieceMeshes.get(meshName)
       if (mesh) {
         mesh.visible = true
+        // Restore original materials (may have been cloned for fade animation)
         mesh.traverse((child) => {
           if ((child as Mesh).isMesh) {
             const m = child as Mesh
-            const materials = Array.isArray(m.material) ? m.material : [m.material]
-            materials.forEach(mat => {
-              if (mat) mat.opacity = 1
-            })
+            const originalMat = originalMaterials.get(m.uuid)
+            if (originalMat) {
+              // Restore original material with full opacity
+              if (Array.isArray(originalMat)) {
+                m.material = originalMat.map(mat => {
+                  const cloned = mat.clone()
+                  cloned.opacity = 1
+                  cloned.transparent = false
+                  return cloned
+                })
+              } else {
+                const cloned = originalMat.clone()
+                cloned.opacity = 1
+                cloned.transparent = false
+                m.material = cloned
+              }
+            }
           }
         })
       }
