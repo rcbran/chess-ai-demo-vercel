@@ -162,7 +162,8 @@ export const Scene = ({
 
   // Helper function to update piece position when a move is executed
   // This will be called from move execution code in Feature 6
-  const _updatePiecePosition = useCallback((meshName: string, from: Position, to: Position, capturedMeshName?: string | null) => {
+  // @ts-expect-error - Intentionally unused until Feature 6
+  const _updatePiecePosition = useCallback((meshName: string, _from: Position, to: Position, capturedMeshName?: string | null) => {
     // Update the moving piece's position
     pieceSquares.current.set(meshName, to)
     
