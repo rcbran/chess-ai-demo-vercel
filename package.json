@@ -11,7 +11,8 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "postinstall": "mkdir -p public/stockfish && cp node_modules/stockfish/src/stockfish-17.1-lite-single-03e3232.js node_modules/stockfish/src/stockfish-17.1-lite-single-03e3232.wasm public/stockfish/"
   },
   "dependencies": {
     "@react-spring/three": "^10.0.3",

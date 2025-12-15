@@ -47,14 +47,9 @@ export class StockfishAI {
 
     return new Promise((resolve, reject) => {
       try {
-        // Load the single-threaded lite version (works without CORS headers)
-        // This is the recommended version for simpler deployment
-        const workerUrl = new URL(
-          'stockfish/src/stockfish-17.1-lite-single-03e3232.js',
-          import.meta.url
-        )
-        
-        this.worker = new Worker(workerUrl, { type: 'module' })
+        // Load from public folder - files are copied there during install
+        // This ensures the WASM file is available in production
+        this.worker = new Worker('/stockfish/stockfish-17.1-lite-single-03e3232.js')
         
         let initialized = false
         let ready = false
