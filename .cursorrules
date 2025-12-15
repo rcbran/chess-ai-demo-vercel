@@ -64,6 +64,22 @@ After publishing a PR, follow this workflow to handle CodeRabbit reviews:
 
 This ensures all automated review feedback is addressed before merging.
 
+## Pre-Commit Requirements
+
+**ALWAYS run these checks before committing and pushing code:**
+
+1. **Linter:** `bun run lint` - Must pass with no errors
+2. **Tests:** `bun test` - All tests must pass
+3. **Build:** `bun run build` - Build must complete successfully
+
+**Workflow:**
+```bash
+# Before every commit/push, run:
+bun run lint && bun test && bun run build
+```
+
+If any of these fail, **DO NOT commit or push**. Fix the issues first, then re-run the checks.
+
 ## Project Commands
 - **Dev server:** `bun dev`
 - **Build:** `bun run build`
