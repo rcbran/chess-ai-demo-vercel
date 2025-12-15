@@ -1,6 +1,5 @@
 import { Suspense, useState, useCallback, useRef } from 'react'
 import { AboutModal, AboutButton } from './components/AboutModal'
-import { PlayButton } from './components/PlayButton'
 import { SideSelectionModal } from './components/SideSelectionModal'
 import { ExitPlayButton } from './components/ExitPlayButton'
 import { Canvas } from '@react-three/fiber'
@@ -164,13 +163,11 @@ const App = () => {
       
       <Loader />
       
-      {/* Title overlay - only show in demo mode */}
-      <TitleOverlay hidden={gameMode === 'play' || displayedPiece !== null} />
-      
-      {/* Play button - only show in demo mode */}
-      <PlayButton 
-        onClick={handlePlayButtonClick} 
-        hidden={gameMode === 'play' || displayedPiece !== null || isAboutOpen} 
+      {/* Title overlay with integrated play button - only show in demo mode */}
+      <TitleOverlay 
+        hidden={gameMode === 'play' || displayedPiece !== null} 
+        onPlayClick={handlePlayButtonClick}
+        showPlayButton={gameMode === 'demo' && !isAboutOpen}
       />
       
       {/* Exit button - only show in play mode */}

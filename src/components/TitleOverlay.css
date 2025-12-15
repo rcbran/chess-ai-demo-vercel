@@ -53,6 +53,58 @@
   text-transform: uppercase;
 }
 
+/* Play section - button with text */
+.play-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  pointer-events: auto;
+}
+
+.play-button-inline {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 24px;
+  line-height: 1;
+  
+  cursor: pointer;
+  transition: all 0.3s ease-out;
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.play-button-inline:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.play-button-inline:active {
+  transform: scale(0.95);
+}
+
+.play-text {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .title-overlay {
@@ -68,6 +120,22 @@
   .subtitle {
     font-size: 8px;
     letter-spacing: 2px;
+  }
+  
+  .play-section {
+    margin-top: 12px;
+    gap: 10px;
+  }
+  
+  .play-button-inline {
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
+  }
+  
+  .play-text {
+    font-size: 9px;
+    letter-spacing: 1px;
   }
 }
 
