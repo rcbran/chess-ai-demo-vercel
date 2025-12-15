@@ -1,8 +1,9 @@
 import { useRef, useEffect, useMemo, useCallback, useState, type ComponentRef } from 'react'
 import { useThree } from '@react-three/fiber'
 import { useGLTF, OrbitControls } from '@react-three/drei'
-import { Color, MeshStandardMaterial, type Group, type Mesh, type Object3D, type Material } from 'three'
+import { Color as ThreeColor, MeshStandardMaterial, type Group, type Mesh, type Object3D, type Material, Vector3 } from 'three'
 import { getPieceTypeFromName, getPieceColorFromName, type PieceType } from '../data/pieceData'
+import type { Color } from '../game/types'
 
 interface SceneProps {
   onPieceClick: (pieceType: PieceType, color: 'white' | 'black', meshName: string, screenX: number) => void
@@ -11,16 +12,40 @@ interface SceneProps {
   selectedPiece: string | null
   hoveredPiece: string | null
   gameMode?: 'demo' | 'play'
+  playerColor?: Color | null
+}
+
+// Camera positions for each player perspective
+// White player sits behind rank 1 (negative Z), looking toward rank 8
+// Black player sits behind rank 8 (positive Z), looking toward rank 1
+// Higher Y value (0.5) and reduced Z (0.45) for more overhead angle - ensures all pieces are clickable
+const CAMERA_CONFIG = {
+  white: {
+    position: new Vector3(0, 0.5, -0.45),
+    target: new Vector3(0, 0, 0),
+  },
+  black: {
+    position: new Vector3(0, 0.5, 0.45),
+    target: new Vector3(0, 0, 0),
+  },
+}
+
+// OrbitControls limits for play mode
+const PLAY_MODE_LIMITS = {
+  rotationRange: Math.PI / 7.2,    // ~25 degrees of freedom in any direction
+  minDistance: 0.3,
+  maxDistance: 1.0,
 }
 
 // Store original materials for each mesh
 const originalMaterials = new Map<string, Material | Material[]>()
 
-export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece, hoveredPiece, gameMode: _gameMode = 'demo' }: SceneProps) => {
+export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece, hoveredPiece, gameMode = 'demo', playerColor }: SceneProps) => {
   const groupRef = useRef<Group>(null)
   const controlsRef = useRef<ComponentRef<typeof OrbitControls>>(null)
   
-  // TODO: Feature 4 - Use _gameMode for camera locking behavior
+  // Get camera from Three.js context for play mode positioning
+  const { camera } = useThree()
   
   // Load the chess model
   const { scene } = useGLTF('/models/chess_set_4k.gltf')
@@ -74,7 +99,7 @@ export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece,
   }, [clonedScene])
 
   // Create highlight material
-  const createHighlightMaterial = useCallback((originalMat: Material, color: Color): Material => {
+  const createHighlightMaterial = useCallback((originalMat: Material, color: ThreeColor): Material => {
     const mat = originalMat.clone() as MeshStandardMaterial
     mat.emissive = color
     mat.emissiveIntensity = 1.5
@@ -82,7 +107,7 @@ export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece,
   }, [])
 
   // Apply highlight effect to a piece
-  const setHighlight = useCallback((pieceName: string | null, color: Color | null) => {
+  const setHighlight = useCallback((pieceName: string | null, color: ThreeColor | null) => {
     pieceMeshes.forEach((pieceObj, name) => {
       const isTarget = name === pieceName
       
@@ -114,9 +139,9 @@ export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece,
   // Update highlights when hover/selection changes
   useEffect(() => {
     if (selectedPiece) {
-      setHighlight(selectedPiece, new Color(0x00ff00)) // Bright green for selected
+      setHighlight(selectedPiece, new ThreeColor(0x00ff00)) // Bright green for selected
     } else if (hoveredPiece) {
-      setHighlight(hoveredPiece, new Color(0x00aaff)) // Bright blue for hover
+      setHighlight(hoveredPiece, new ThreeColor(0x00aaff)) // Bright blue for hover
     } else {
       setHighlight(null, null) // Reset all
     }
@@ -171,20 +196,92 @@ export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece,
     onPieceHover(null)
   }
 
-  // Control auto-rotate based on selection and hover
+  // Control auto-rotate based on selection, hover, and game mode
   useEffect(() => {
     if (controlsRef.current) {
-      // Stop rotation when a piece is selected
-      controlsRef.current.autoRotate = selectedPiece === null
+      // Disable auto-rotate in play mode or when piece is selected
+      const shouldAutoRotate = gameMode === 'demo' && selectedPiece === null
+      controlsRef.current.autoRotate = shouldAutoRotate
       
-      // Slow down rotation when hovering
-      if (hoveredPiece && !selectedPiece) {
-        controlsRef.current.autoRotateSpeed = 0.05
-      } else {
-        controlsRef.current.autoRotateSpeed = 0.25
+      // Slow down rotation when hovering (only relevant in demo mode)
+      if (gameMode === 'demo') {
+        if (hoveredPiece && !selectedPiece) {
+          controlsRef.current.autoRotateSpeed = 0.05
+        } else {
+          controlsRef.current.autoRotateSpeed = 0.25
+        }
       }
     }
-  }, [selectedPiece, hoveredPiece])
+  }, [selectedPiece, hoveredPiece, gameMode])
+
+  // Camera locking for play mode
+  useEffect(() => {
+    const controls = controlsRef.current
+    if (!controls) return
+    
+    let animationFrameId: number | null = null
+
+    if (gameMode === 'play' && playerColor) {
+      // Get target camera config based on player color
+      const config = CAMERA_CONFIG[playerColor]
+      
+      // Animate camera to the target position
+      const startPosition = camera.position.clone()
+      const endPosition = config.position.clone()
+      const duration = 800 // ms
+      const startTime = Date.now()
+
+      const animateCamera = () => {
+        const elapsed = Date.now() - startTime
+        const progress = Math.min(elapsed / duration, 1)
+        
+        // Ease-out cubic for smooth deceleration
+        const eased = 1 - Math.pow(1 - progress, 3)
+        
+        camera.position.lerpVectors(startPosition, endPosition, eased)
+        controls.target.copy(config.target)
+        controls.update()
+
+        if (progress < 1) {
+          animationFrameId = requestAnimationFrame(animateCamera)
+        } else {
+          // Animation complete - apply play mode limits relative to final position
+          const polarAngle = controls.getPolarAngle()
+          const azimuthAngle = controls.getAzimuthalAngle()
+          const range = PLAY_MODE_LIMITS.rotationRange
+          
+          // Set limits as ±25° from current position
+          controls.minPolarAngle = Math.max(0.1, polarAngle - range)
+          controls.maxPolarAngle = Math.min(Math.PI / 2, polarAngle + range)
+          controls.minAzimuthAngle = azimuthAngle - range
+          controls.maxAzimuthAngle = azimuthAngle + range
+          controls.minDistance = PLAY_MODE_LIMITS.minDistance
+          controls.maxDistance = PLAY_MODE_LIMITS.maxDistance
+          controls.enablePan = false
+          controls.update()
+        }
+      }
+
+      animateCamera()
+    } else if (gameMode === 'demo') {
+      // Reset to demo mode - remove all restrictions
+      controls.minPolarAngle = 0
+      controls.maxPolarAngle = Math.PI
+      controls.minAzimuthAngle = -Infinity
+      controls.maxAzimuthAngle = Infinity
+      controls.minDistance = 0
+      controls.maxDistance = Infinity
+      controls.enablePan = true
+      controls.update()
+    }
+    
+    // Cleanup: cancel animation frame if effect re-runs or component unmounts
+    return () => {
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId)
+      }
+    }
+  }, [gameMode, playerColor, camera])
 
   return (
     <>

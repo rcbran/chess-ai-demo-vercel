@@ -50,6 +50,20 @@ gh api repos/rcbran/chess-ai-demo-vercel/pulls/{PR_NUMBER}/comments --jq '.[] | 
 4. Run tests after each fix: `bun test`
 5. Check for lint errors: `bun run lint`
 
+## Post-PR Review Workflow
+
+After publishing a PR, follow this workflow to handle CodeRabbit reviews:
+
+1. **Wait 5 minutes** after creating/updating the PR for CodeRabbit to complete its review
+2. **Check for unresolved comments** using the commands above
+3. **Address any comments** found (fix code, respond to questions)
+4. **Push fixes** if any changes were made
+5. **Ask user:** "CodeRabbit comments addressed. Wait another 5 minutes for re-review? (y/n)"
+   - If **y**: Wait 5 minutes and repeat from step 2
+   - If **n**: Proceed with merge or next steps
+
+This ensures all automated review feedback is addressed before merging.
+
 ## Project Commands
 - **Dev server:** `bun dev`
 - **Build:** `bun run build`

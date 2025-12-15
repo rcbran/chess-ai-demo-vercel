@@ -221,29 +221,30 @@ Each feature will be developed as: **Branch → Implement → PR → Code Review
 - ✅ Comprehensive unit tests (29 tests)
 - **Depends on:** Feature 1 (needs piece types)
 
-### Feature 3: Game Mode Toggle & Side Selection 🎯 **NEXT**
+### Feature 3: Game Mode Toggle & Side Selection ✅ **COMPLETED**
 
-**Branch:** `feature/game-mode-toggle`
+**Branch:** `feature/game-mode-toggle` ✅ **MERGED**
 
-- Add game mode state to `App.tsx` (`demo` | `play`)
-- Create "Play" button overlay component
-- Create side selection modal (White/Black)
-- Toggle between demo and play modes
+- ✅ Add game mode state to `App.tsx` (`demo` | `play`)
+- ✅ Create "Play" button overlay component
+- ✅ Create side selection modal (White/Black)
+- ✅ Toggle between demo and play modes
 - **No gameplay yet** - just mode switching
 
 **📋 Detailed Plan:** See `tasks/FEATURE_3_GAME_MODE_TOGGLE.md` for complete implementation details
 
-### Feature 4: Camera Locking for Play Mode
+### Feature 4: Camera Locking for Play Mode ✅ **COMPLETED**
 
-**Branch:** `feature/camera-locking`
+**Branch:** `feature/camera-locking` ✅ **MERGED**
 
-- Modify `Scene.tsx` to lock camera in play mode
-- Disable auto-rotate when `gameMode === 'play'`
-- Lock OrbitControls based on `playerColor`
-- Camera positions for white/black sides
+- ✅ Modify `Scene.tsx` to lock camera in play mode
+- ✅ Disable auto-rotate when `gameMode === 'play'`
+- ✅ Lock OrbitControls based on `playerColor`
+- ✅ Camera positions for white/black sides
+- ✅ Smooth 800ms camera animation with ease-out
 - **Depends on:** Feature 3 (needs game mode state)
 
-### Feature 5: Move Selection & Visual Feedback
+### Feature 5: Move Selection & Visual Feedback 🎯 **NEXT**
 
 **Branch:** `feature/move-selection`
 
@@ -252,7 +253,10 @@ Each feature will be developed as: **Branch → Implement → PR → Code Review
 - Calculate and display valid moves
 - Create `MoveIndicator.tsx` component for valid move highlights
 - Show selected piece glow (reuse existing highlight)
-- **Depends on:** Features 1, 2, 3, 4
+- **Player always moves first** - regardless of chosen color (white or black)
+- **Depends on:** Features 1, 2, 3, 4 (all complete)
+
+**Note:** In standard chess, white moves first. However, for better UX in this demo, the player always makes the first move regardless of their chosen side. When playing as black, the player moves first, then the AI (as white) responds.
 
 ### Feature 6: Move Execution & Animation
 
@@ -287,6 +291,28 @@ Each feature will be developed as: **Branch → Implement → PR → Code Review
 - "Exit to Demo" button
 - Optional: Move history display
 - **Depends on:** Feature 7
+
+---
+
+## Optional Enhancements
+
+These features are nice-to-have and can be implemented after core gameplay is complete.
+
+### Optional: Settings Modal with Post-Processing Control
+
+**Branch:** `feature/settings-modal`
+
+- Create `SettingsButton.tsx` - gear icon in top-right area
+- Create `SettingsModal.tsx` - modal with slider control
+- Post-processing intensity slider (0-100%):
+  - 0%: No effects (best performance)
+  - 50%: Vignette only
+  - 100%: Full effects (vignette + chromatic aberration)
+- Persist setting to localStorage
+- **Effort:** ~300 lines, 30-45 min
+- **Depends on:** None (can be added anytime)
+
+---
 
 ## Development Workflow
 
