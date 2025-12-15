@@ -128,17 +128,18 @@ export class StockfishAI {
       throw new Error('Stockfish not initialized')
     }
 
+    // Guard against concurrent calls
+    if (this.messageHandler) {
+      throw new Error('AI move already in progress')
+    }
+
     const moveConfig = { ...this.config, ...config }
 
     return new Promise((resolve, reject) => {
-      // Timeout after 30 seconds
-      const timeoutId = setTimeout(() => {
-        this.messageHandler = null
-        reject(new Error('AI move calculation timeout'))
-      }, 30000)
-
       // Handle worker errors during move calculation
       const worker = this.worker!
+      
+      // Define cleanup and errorHandler before timeout so they're in scope
       const cleanup = () => {
         clearTimeout(timeoutId)
         this.messageHandler = null
@@ -149,6 +150,13 @@ export class StockfishAI {
         cleanup()
         reject(new Error('Worker error during move calculation'))
       }
+
+      // Timeout after 30 seconds
+      const timeoutId = setTimeout(() => {
+        cleanup()
+        reject(new Error('AI move calculation timeout'))
+      }, 30000)
+
       worker.addEventListener('error', errorHandler)
 
       this.messageHandler = (message) => {
@@ -246,8 +254,14 @@ export const getStockfishAI = async (config?: AIConfig): Promise<StockfishAI> =>
   if (!initPromise) {
     initPromise = (async () => {
       const instance = new StockfishAI()
-      await instance.initialize(config)
-      return instance
+      try {
+        await instance.initialize(config)
+        return instance
+      } catch (error) {
+        // Reset promise on failure so retry is possible
+        initPromise = null
+        throw error
+      }
     })()
   }
   return initPromise
@@ -255,9 +269,14 @@ export const getStockfishAI = async (config?: AIConfig): Promise<StockfishAI> =>
 
 export const terminateStockfishAI = async (): Promise<void> => {
   if (initPromise) {
-    const instance = await initPromise
-    instance.terminate()
-    initPromise = null
+    try {
+      const instance = await initPromise
+      instance.terminate()
+    } catch {
+      // Ignore - initialization failed
+    } finally {
+      initPromise = null
+    }
   }
 }
 

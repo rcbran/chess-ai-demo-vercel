@@ -1,8 +1,8 @@
-# Feature 7: AI Integration ✅ COMPLETE
+# Feature 7: AI Integration
 
 **Branch:** `feature/ai-integration`
 **PR:** [#9](https://github.com/rcbran/chess-ai-demo-vercel/pull/9)
-**Status:** ✅ Merged
+**Status:** 🔄 In Review
 
 ## Overview
 
@@ -48,7 +48,6 @@ export interface AIMove {
 
 export interface AIConfig {
   depth?: number          // Search depth (1-20+), higher = stronger
-  moveTime?: number       // Time limit in ms (alternative to depth)
   skillLevel?: number     // 0-20, affects move quality
 }
 
@@ -219,8 +218,8 @@ const DIFFICULTY_LEVELS: DifficultyLevel[] = [
 
 1. **Manual testing:**
    - Play as white, verify AI responds after each move
-   - Play as black, verify AI moves first
-   - Test "AI thinking" indicator appears/disappears
+   - Play as black, verify player still moves first (player always moves first regardless of color)
+   - Test "Thinking..." indicator appears/disappears
    - Test checkmate detection stops AI
    - Test exit to demo while AI is thinking
 
@@ -246,7 +245,7 @@ const DIFFICULTY_LEVELS: DifficultyLevel[] = [
 
 ### Stockfish UCI Commands
 
-```
+```text
 // Initialize
 uci
 setoption name Skill Level value 20
@@ -290,5 +289,5 @@ stockfish.onmessage = (e) => console.log(e.data)
 
 1. **AI move animation speed:** Same as player (400ms) ✅
 2. **First move:** Player always moves first (regardless of color choice) ✅
-3. **Turn indicator:** Animated text at top of screen showing "Your turn" or "AI thinking..." ✅
+3. **Turn indicator:** Animated text at top of screen showing "Your turn" or "Thinking..." ✅
 
