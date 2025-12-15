@@ -29,7 +29,7 @@ An interactive 3D chess set built with React and Three.js. Play against a Stockf
 - **Three.js** - 3D rendering engine
 - **React Three Fiber** - React renderer for Three.js
 - **React Three Drei** - Useful helpers for R3F (OrbitControls, useGLTF, useProgress)
-- **Stockfish.js** - WebAssembly chess engine for AI opponent
+- **stockfish** - WebAssembly chess engine for AI opponent
 - **TypeScript** - Type safety
 - **Vite** - Build tool and dev server
 
@@ -102,7 +102,7 @@ src/
 │   ├── InfoPanel.tsx          # Piece information overlay (demo mode)
 │   ├── TitleOverlay.tsx       # Title and play button
 │   ├── SideSelectionModal.tsx # White/Black selection modal
-│   ├── GameControls.tsx       # Back and Reset buttons (play mode)
+│   ├── ExitPlayButton.tsx     # Back and Reset buttons (play mode)
 │   ├── TurnIndicator.tsx      # "Your turn" / "Thinking..." indicator
 │   ├── MoveIndicator.tsx      # Visual move/capture indicators
 │   └── Loader.tsx             # Loading spinner with progress

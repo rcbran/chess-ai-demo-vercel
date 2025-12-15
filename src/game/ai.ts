@@ -58,6 +58,17 @@ export class StockfishAI {
         
         let initialized = false
         let ready = false
+        let timeoutId: ReturnType<typeof setTimeout> | null = null
+
+        // Timeout after 30 seconds
+        timeoutId = setTimeout(() => {
+          if (!this.isReady) {
+            this.worker?.terminate()
+            this.worker = null
+            timeoutId = null
+            reject(new Error('Stockfish initialization timeout'))
+          }
+        }, 30000)
 
         this.worker.onmessage = (e: MessageEvent) => {
           const message = typeof e.data === 'string' ? e.data : String(e.data)
@@ -74,6 +85,10 @@ export class StockfishAI {
           if (message === 'readyok' && !ready) {
             ready = true
             this.isReady = true
+            if (timeoutId) {
+              clearTimeout(timeoutId)
+              timeoutId = null
+            }
             resolve()
             return
           }
@@ -86,18 +101,15 @@ export class StockfishAI {
 
         this.worker.onerror = (error) => {
           console.error('Stockfish worker error:', error)
+          if (timeoutId) {
+            clearTimeout(timeoutId)
+            timeoutId = null
+          }
           reject(error)
         }
 
         // Start UCI initialization
         this.worker.postMessage('uci')
-
-        // Timeout after 30 seconds
-        setTimeout(() => {
-          if (!this.isReady) {
-            reject(new Error('Stockfish initialization timeout'))
-          }
-        }, 30000)
       } catch (error) {
         reject(error)
       }
@@ -118,7 +130,27 @@ export class StockfishAI {
 
     const moveConfig = { ...this.config, ...config }
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      // Timeout after 30 seconds
+      const timeoutId = setTimeout(() => {
+        this.messageHandler = null
+        reject(new Error('AI move calculation timeout'))
+      }, 30000)
+
+      // Handle worker errors during move calculation
+      const worker = this.worker!
+      const cleanup = () => {
+        clearTimeout(timeoutId)
+        this.messageHandler = null
+        worker.removeEventListener('error', errorHandler)
+      }
+      
+      const errorHandler = (_error: ErrorEvent) => {
+        cleanup()
+        reject(new Error('Worker error during move calculation'))
+      }
+      worker.addEventListener('error', errorHandler)
+
       this.messageHandler = (message) => {
         // Parse bestmove response
         // Format: "bestmove e2e4" or "bestmove e7e8q" (with promotion)
@@ -128,7 +160,7 @@ export class StockfishAI {
           
           if (moveStr === '(none)') {
             // No legal moves (checkmate or stalemate)
-            this.messageHandler = null
+            cleanup()
             resolve(null)
             return
           }
@@ -140,14 +172,20 @@ export class StockfishAI {
           const from = squareToPosition(fromSquare)
           const to = squareToPosition(toSquare)
           
-          if (!from || !to) {
+          // Validate position values (check for NaN and bounds)
+          if (
+            !Number.isFinite(from.row) || !Number.isFinite(from.col) ||
+            !Number.isFinite(to.row) || !Number.isFinite(to.col) ||
+            from.row < 0 || from.row > 7 || from.col < 0 || from.col > 7 ||
+            to.row < 0 || to.row > 7 || to.col < 0 || to.col > 7
+          ) {
             console.error('Failed to parse AI move:', moveStr)
-            this.messageHandler = null
+            cleanup()
             resolve(null)
             return
           }
           
-          this.messageHandler = null
+          cleanup()
           resolve({
             from,
             to,
@@ -202,20 +240,24 @@ export class StockfishAI {
 }
 
 // Singleton instance for convenience
-let defaultInstance: StockfishAI | null = null
+let initPromise: Promise<StockfishAI> | null = null
 
 export const getStockfishAI = async (config?: AIConfig): Promise<StockfishAI> => {
-  if (!defaultInstance) {
-    defaultInstance = new StockfishAI()
-    await defaultInstance.initialize(config)
+  if (!initPromise) {
+    initPromise = (async () => {
+      const instance = new StockfishAI()
+      await instance.initialize(config)
+      return instance
+    })()
   }
-  return defaultInstance
+  return initPromise
 }
 
-export const terminateStockfishAI = (): void => {
-  if (defaultInstance) {
-    defaultInstance.terminate()
-    defaultInstance = null
+export const terminateStockfishAI = async (): Promise<void> => {
+  if (initPromise) {
+    const instance = await initPromise
+    instance.terminate()
+    initPromise = null
   }
 }
 
