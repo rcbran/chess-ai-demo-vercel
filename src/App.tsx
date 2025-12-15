@@ -1,7 +1,7 @@
 import { Suspense, useState, useCallback, useRef } from 'react'
 import { AboutModal, AboutButton } from './components/AboutModal'
 import { SideSelectionModal } from './components/SideSelectionModal'
-import { ExitPlayButton } from './components/ExitPlayButton'
+import { GameControls } from './components/ExitPlayButton'
 import { Canvas } from '@react-three/fiber'
 import { Scene } from './components/Scene'
 import { InfoPanel } from './components/InfoPanel'
@@ -11,7 +11,7 @@ import { Effects } from './components/Effects'
 import { AnimatedBackground, AmbientParticles } from './components/AnimatedBackground'
 import { pieceData, type PieceType } from './data/pieceData'
 import type { Color, GameState, Position } from './game/types'
-import { initializeGameState, getValidMoves, getPieceAt, positionToSquare } from './game/chessEngine'
+import { initializeGameState, getValidMoves, getPieceAt, makeMove } from './game/chessEngine'
 import './App.css'
 
 type GameMode = 'demo' | 'play'
@@ -33,6 +33,7 @@ const App = () => {
   const [gameState, setGameState] = useState<GameState | null>(null)
   const [selectedSquare, setSelectedSquare] = useState<Position | null>(null)
   const [validMoves, setValidMoves] = useState<Position[]>([])
+  const [isMoveInProgress, setIsMoveInProgress] = useState(false)
   
   // Demo mode state
   const [selectedPiece, setSelectedPiece] = useState<SelectedPiece | null>(null)
@@ -76,6 +77,18 @@ const App = () => {
     setSelectedSquare(null)
     setValidMoves([])
   }, [])
+
+  const handleResetBoard = useCallback(() => {
+    if (!playerColor) return
+    
+    // Re-initialize game state with current player color
+    const newGameState = initializeGameState()
+    newGameState.currentTurn = playerColor
+    setGameState(newGameState)
+    setSelectedSquare(null)
+    setValidMoves([])
+    setIsMoveInProgress(false)
+  }, [playerColor])
 
   const handlePieceClick = useCallback((
     pieceType: PieceType, 
@@ -140,13 +153,14 @@ const App = () => {
   }, [gameMode, selectedPiece, isClosing, handleClosePanel])
 
   // Handle square clicks in play mode
+  // Note: Currently allows manual play for both sides (AI integration deferred to Feature 7)
   const handleSquareClick = useCallback((position: Position) => {
-    if (!gameState || gameMode !== 'play' || !playerColor) return
+    if (!gameState || gameMode !== 'play' || isMoveInProgress) return
 
     const clickedPiece = getPieceAt(gameState.board, position)
     
-    // Case 1: Clicking on own piece - select it
-    if (clickedPiece && clickedPiece.color === playerColor) {
+    // Case 1: Clicking on current turn's piece - select it
+    if (clickedPiece && clickedPiece.color === gameState.currentTurn) {
       // If clicking the same piece, deselect
       if (selectedSquare && 
           selectedSquare.row === position.row && 
@@ -163,20 +177,47 @@ const App = () => {
       return
     }
     
-    // Case 2: Clicking on valid move destination
+    // Case 2: Clicking on valid move destination - EXECUTE MOVE
     if (selectedSquare && validMoves.some(m => m.row === position.row && m.col === position.col)) {
-      // This is a valid move - will be executed in Feature 6
-      console.log(`Move: ${positionToSquare(selectedSquare)} → ${positionToSquare(position)}`)
-      // For now, just deselect (move execution comes in Feature 6)
+      // Start move execution
+      setIsMoveInProgress(true)
+      
+      // Clear selection immediately for visual feedback
+      const from = selectedSquare
+      const to = position
       setSelectedSquare(null)
       setValidMoves([])
+      
+      // Execute the move - new game state will trigger animation in Scene
+      try {
+        const newGameState = makeMove(gameState, from, to)
+        setGameState(newGameState)
+      } catch (error) {
+        console.error('Move execution failed:', error)
+        setIsMoveInProgress(false)
+      }
       return
     }
     
     // Case 3: Clicking elsewhere - deselect
     setSelectedSquare(null)
     setValidMoves([])
-  }, [gameState, gameMode, playerColor, selectedSquare, validMoves])
+  }, [gameState, gameMode, selectedSquare, validMoves, isMoveInProgress])
+
+  // Handle animation complete callback from Scene
+  const handleMoveAnimationComplete = useCallback(() => {
+    setIsMoveInProgress(false)
+    
+    // Log game status
+    if (gameState?.isCheckmate) {
+      const winner = gameState.currentTurn === 'white' ? 'Black' : 'White'
+      console.log(`Checkmate! ${winner} wins!`)
+    } else if (gameState?.isStalemate) {
+      console.log('Stalemate! Game is a draw.')
+    } else if (gameState?.isCheck) {
+      console.log(`${gameState.currentTurn} is in check!`)
+    }
+  }, [gameState])
 
   return (
     <div className="app-container">
@@ -207,6 +248,7 @@ const App = () => {
             selectedSquare={selectedSquare}
             validMoves={validMoves}
             onSquareClick={handleSquareClick}
+            onMoveAnimationComplete={handleMoveAnimationComplete}
           />
           
           {/* Post-processing effects - vignette only for performance */}
@@ -223,9 +265,10 @@ const App = () => {
         showPlayButton={gameMode === 'demo' && !isAboutOpen}
       />
       
-      {/* Exit button - only show in play mode */}
-      <ExitPlayButton 
-        onClick={handleExitToDemo} 
+      {/* Game controls - only show in play mode */}
+      <GameControls 
+        onExitToDemo={handleExitToDemo}
+        onResetBoard={handleResetBoard}
         hidden={gameMode === 'demo'} 
       />
       

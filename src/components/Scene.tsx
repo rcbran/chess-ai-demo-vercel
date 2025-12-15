@@ -1,11 +1,11 @@
 import { useRef, useEffect, useMemo, useCallback, useState, type ComponentRef } from 'react'
-import { useThree } from '@react-three/fiber'
+import { useThree, useFrame } from '@react-three/fiber'
 import { useGLTF, OrbitControls } from '@react-three/drei'
 import { Color as ThreeColor, MeshStandardMaterial, type Group, type Mesh, type Object3D, type Material, Vector3 } from 'three'
 import { getPieceTypeFromName, getPieceColorFromName, type PieceType } from '../data/pieceData'
 import type { Color, GameState, Position } from '../game/types'
 import { MoveIndicator } from './MoveIndicator'
-import { worldPositionToPosition, getMeshInitialSquare, parseMeshName } from '../game/boardMapping'
+import { worldPositionToPosition, getMeshInitialSquare, parseMeshName, positionToWorldPosition } from '../game/boardMapping'
 import { squareToPosition, getPieceAt } from '../game/chessEngine'
 
 interface SceneProps {
@@ -21,6 +21,7 @@ interface SceneProps {
   selectedSquare?: Position | null
   validMoves?: Position[]
   onSquareClick?: (position: Position) => void
+  onMoveAnimationComplete?: () => void
 }
 
 // Camera positions for each player perspective
@@ -48,6 +49,9 @@ const PLAY_MODE_LIMITS = {
 // Store original materials for each mesh
 const originalMaterials = new Map<string, Material | Material[]>()
 
+// Smooth ease-out cubic for natural deceleration
+const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3)
+
 export const Scene = ({ 
   onPieceClick, 
   onPieceHover, 
@@ -59,7 +63,8 @@ export const Scene = ({
   gameState,
   selectedSquare,
   validMoves = [],
-  onSquareClick
+  onSquareClick,
+  onMoveAnimationComplete
 }: SceneProps) => {
   const groupRef = useRef<Group>(null)
   const controlsRef = useRef<ComponentRef<typeof OrbitControls>>(null)
@@ -67,6 +72,26 @@ export const Scene = ({
   // Track current positions of all pieces (mesh name → current Position)
   // At game start, pieces are at their initial positions
   const pieceSquares = useRef<Map<string, Position>>(new Map())
+  
+  // Animation tracking refs
+  const activeAnimations = useRef<Map<string, {
+    mesh: Object3D
+    startPos: Vector3
+    endPos: Vector3
+    startTime: number
+    duration: number
+    onComplete: () => void
+  }>>(new Map())
+  
+  const capturedMeshes = useRef<Set<string>>(new Set())
+  
+  const fadingPieces = useRef<Map<string, {
+    mesh: Object3D
+    startTime: number
+    duration: number
+  }>>(new Map())
+  
+  const previousMoveCount = useRef<number>(0)
   
   // Get camera from Three.js context for play mode positioning
   const { camera } = useThree()
@@ -78,6 +103,8 @@ export const Scene = ({
   const { gl } = useThree()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [isHoveringPiece, setIsHoveringPiece] = useState(false)
+  // Track hovered square for indicator feedback (separate from piece selection hover)
+  const [hoveredIndicatorSquare, setHoveredIndicatorSquare] = useState<Position | null>(null)
   
   // Store canvas element reference
   useEffect(() => {
@@ -131,21 +158,22 @@ export const Scene = ({
   }, [])
 
   // Apply highlight effect to a piece
-  const setHighlight = useCallback((pieceName: string | null, color: ThreeColor | null) => {
+  // Support multiple simultaneous highlights via a Map
+  const setHighlights = useCallback((highlights: Map<string, ThreeColor>) => {
     pieceMeshes.forEach((pieceObj, name) => {
-      const isTarget = name === pieceName
+      const highlightColor = highlights.get(name)
       
       pieceObj.traverse((child) => {
         const mesh = child as Mesh
         if (mesh.isMesh && mesh.material) {
           const originalMat = originalMaterials.get(mesh.uuid)
           
-          if (isTarget && color && originalMat) {
+          if (highlightColor && originalMat) {
             // Apply highlight by replacing with highlighted material
             if (Array.isArray(originalMat)) {
-              mesh.material = originalMat.map(m => createHighlightMaterial(m, color))
+              mesh.material = originalMat.map(m => createHighlightMaterial(m, highlightColor))
             } else {
-              mesh.material = createHighlightMaterial(originalMat, color)
+              mesh.material = createHighlightMaterial(originalMat, highlightColor)
             }
           } else if (originalMat) {
             // Restore original material
@@ -159,6 +187,102 @@ export const Scene = ({
       })
     })
   }, [pieceMeshes, createHighlightMaterial])
+
+  // Animation loop for piece movements and capture fades
+  // Use performance.now() consistently for timing
+  useFrame(() => {
+    const currentTime = performance.now() / 1000
+    
+    // Process piece movement animations
+    activeAnimations.current.forEach((anim, meshName) => {
+      const elapsed = currentTime - anim.startTime
+      const progress = Math.min(elapsed / anim.duration, 1)
+      const easedProgress = easeOutCubic(progress)
+      
+      // Interpolate position
+      anim.mesh.position.lerpVectors(anim.startPos, anim.endPos, easedProgress)
+      
+      if (progress >= 1) {
+        // Snap to final position
+        anim.mesh.position.copy(anim.endPos)
+        anim.onComplete()
+        activeAnimations.current.delete(meshName)
+      }
+    })
+    
+    // Process fade-out animations for captured pieces
+    fadingPieces.current.forEach((fade, meshName) => {
+      const elapsed = currentTime - fade.startTime
+      const progress = Math.min(elapsed / fade.duration, 1)
+      
+      // Fade opacity
+      fade.mesh.traverse((child) => {
+        if ((child as Mesh).isMesh) {
+          const mesh = child as Mesh
+          const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+          materials.forEach(mat => {
+            if (mat) {
+              mat.transparent = true
+              mat.opacity = 1 - progress
+            }
+          })
+        }
+      })
+      
+      if (progress >= 1) {
+        fade.mesh.visible = false
+        capturedMeshes.current.add(meshName)
+        fadingPieces.current.delete(meshName)
+      }
+    })
+  })
+
+  // Animate piece movement
+  const animatePieceMove = useCallback((
+    meshName: string,
+    _from: Position,
+    to: Position,
+    onComplete: () => void
+  ) => {
+    const mesh = pieceMeshes.get(meshName)
+    if (!mesh) {
+      console.warn('No mesh found for animation:', meshName)
+      onComplete()
+      return
+    }
+    
+    const startPos = new Vector3(mesh.position.x, mesh.position.y, mesh.position.z)
+    const endWorldPos = positionToWorldPosition(to)
+    const endPos = new Vector3(endWorldPos.x, endWorldPos.y, endWorldPos.z)
+    
+    activeAnimations.current.set(meshName, {
+      mesh,
+      startPos,
+      endPos,
+      startTime: performance.now() / 1000,
+      duration: 0.4, // 400ms for snappy feel
+      onComplete: () => {
+        // Update pieceSquares tracking
+        pieceSquares.current.set(meshName, to)
+        onComplete()
+      },
+    })
+  }, [pieceMeshes])
+
+  // Fade out captured piece
+  const fadeOutCapturedPiece = useCallback((meshName: string) => {
+    const mesh = pieceMeshes.get(meshName)
+    if (!mesh) return
+    
+    // Remove from pieceSquares tracking
+    pieceSquares.current.delete(meshName)
+    
+    fadingPieces.current.set(meshName, {
+      mesh,
+      startTime: performance.now() / 1000,
+      duration: 0.25, // 250ms quick fade
+    })
+  }, [pieceMeshes])
 
   // Helper function to update piece position when a move is executed
   // This will be called from move execution code in Feature 6
@@ -250,31 +374,53 @@ export const Scene = ({
     }
   }, [gameState, gameMode, pieceMeshes])
 
-  // Initialize piece positions when entering play mode
+  // Initialize/reset piece positions when entering play mode or resetting board
+  // This handles both initial setup and reset button functionality
   useEffect(() => {
-    if (gameMode === 'play' && gameState) {
-      // If no moves have been made, use initial positions
-      if (gameState.moveHistory.length === 0) {
-        pieceSquares.current.clear()
-        pieceMeshes.forEach((_, meshName) => {
-          const square = getMeshInitialSquare(meshName)
-          if (square) {
-            pieceSquares.current.set(meshName, squareToPosition(square))
-          }
-        })
-      } else {
-        // Rebuild from current board state
-        rebuildPieceSquares()
-      }
+    if (gameMode === 'play' && gameState && gameState.moveHistory.length === 0) {
+      // Clear any active animations
+      activeAnimations.current.clear()
+      fadingPieces.current.clear()
+      
+      // Make all captured pieces visible again and reset opacity
+      capturedMeshes.current.forEach(meshName => {
+        const mesh = pieceMeshes.get(meshName)
+        if (mesh) {
+          mesh.visible = true
+          mesh.traverse((child) => {
+            if ((child as Mesh).isMesh) {
+              const m = child as Mesh
+              const materials = Array.isArray(m.material) ? m.material : [m.material]
+              materials.forEach(mat => {
+                if (mat) mat.opacity = 1
+              })
+            }
+          })
+        }
+      })
+      capturedMeshes.current.clear()
+      
+      // Reset piece positions to initial squares (both tracking and mesh positions)
+      pieceSquares.current.clear()
+      pieceMeshes.forEach((mesh, meshName) => {
+        const initialSquare = getMeshInitialSquare(meshName)
+        if (initialSquare) {
+          const pos = squareToPosition(initialSquare)
+          pieceSquares.current.set(meshName, pos)
+          
+          // Also reset the actual mesh position
+          const worldPos = positionToWorldPosition(pos)
+          mesh.position.set(worldPos.x, worldPos.y, worldPos.z)
+        }
+      })
+      
+      previousMoveCount.current = 0
     }
-  }, [gameMode, gameState, pieceMeshes, rebuildPieceSquares])
+  }, [gameMode, gameState, pieceMeshes])
 
   // Sync pieceSquares when board changes (watch moveHistory length as proxy)
-  useEffect(() => {
-    if (gameMode === 'play' && gameState && gameState.moveHistory.length > 0) {
-      rebuildPieceSquares()
-    }
-  }, [gameMode, gameState, rebuildPieceSquares])
+  // Note: This is now handled after animation completes, so we skip it here
+  // The animation effect will call rebuildPieceSquares after animation finishes
 
   // Get the mesh name for a piece at a given position
   const getMeshAtPosition = useCallback((position: Position): string | null => {
@@ -286,26 +432,151 @@ export const Scene = ({
     return null
   }, [])
 
-  // Update highlights when hover/selection changes
+  // Watch for game state changes and trigger animations
   useEffect(() => {
-    // In play mode, highlight based on selectedSquare
-    if (gameMode === 'play' && selectedSquare) {
-      const meshName = getMeshAtPosition(selectedSquare)
-      if (meshName) {
-        setHighlight(meshName, new ThreeColor(0x00ff00)) // Bright green for selected
-      } else {
-        // If mesh lookup fails, reset highlight to avoid stuck highlights
-        setHighlight(null, null)
-      }
-    } else if (selectedPiece) {
-      setHighlight(selectedPiece, new ThreeColor(0x00ff00)) // Bright green for selected
-    } else if (hoveredPiece) {
-      // Hover highlighting works in both demo and play modes
-      setHighlight(hoveredPiece, new ThreeColor(0x00aaff)) // Bright blue for hover
-    } else {
-      setHighlight(null, null) // Reset all
+    if (!gameState || gameMode !== 'play' || !onMoveAnimationComplete) {
+      previousMoveCount.current = gameState?.moveHistory.length ?? 0
+      return
     }
-  }, [selectedPiece, hoveredPiece, selectedSquare, gameMode, getMeshAtPosition, setHighlight])
+    
+    const currentMoveCount = gameState.moveHistory.length
+    
+    // Check if a new move was made
+    if (currentMoveCount > previousMoveCount.current) {
+      const lastMove = gameState.moveHistory[currentMoveCount - 1]
+      const { from, to, capturedPiece, isCastling, isEnPassant } = lastMove
+      
+      // Find the mesh that needs to move
+      // Use 'from' position to find the piece BEFORE rebuildPieceSquares runs
+      const movingMeshName = getMeshAtPosition(from)
+      
+      if (!movingMeshName) {
+        console.warn('Could not find mesh for move animation', from)
+        rebuildPieceSquares()
+        onMoveAnimationComplete()
+        previousMoveCount.current = currentMoveCount
+        return
+      }
+      
+      // Handle captures - find and fade the captured piece
+      if (capturedPiece) {
+        // For en passant, captured pawn is NOT at 'to' square
+        let capturedPos = to
+        if (isEnPassant) {
+          // Captured pawn is on same row as 'from', same col as 'to'
+          capturedPos = { row: from.row, col: to.col }
+        }
+        
+        const capturedMeshName = getMeshAtPosition(capturedPos)
+        if (capturedMeshName) {
+          fadeOutCapturedPiece(capturedMeshName)
+        }
+      }
+      
+      // Handle castling - also animate the rook
+      if (isCastling) {
+        const isKingside = to.col > from.col
+        const row = from.row
+        const rookFromCol = isKingside ? 7 : 0
+        const rookToCol = isKingside ? 5 : 3
+        const rookFrom = { row, col: rookFromCol }
+        const rookTo = { row, col: rookToCol }
+        
+        const rookMeshName = getMeshAtPosition(rookFrom)
+        if (rookMeshName) {
+          // Animate rook simultaneously (no callback needed)
+          animatePieceMove(rookMeshName, rookFrom, rookTo, () => {})
+        }
+      }
+      
+      // Animate the main piece
+      animatePieceMove(movingMeshName, from, to, () => {
+        // Rebuild piece tracking after animation completes
+        rebuildPieceSquares()
+        onMoveAnimationComplete()
+      })
+    }
+    
+    previousMoveCount.current = currentMoveCount
+  }, [
+    gameState,
+    gameMode,
+    onMoveAnimationComplete,
+    getMeshAtPosition,
+    animatePieceMove,
+    fadeOutCapturedPiece,
+    rebuildPieceSquares
+  ])
+
+  // Find the king mesh that's currently in check
+  const getKingInCheckMesh = useCallback((): string | null => {
+    if (!gameState || !gameState.isCheck) return null
+    
+    // The king in check is the one whose turn it is
+    const kingColor = gameState.currentTurn
+    
+    // Find king position on the board
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = getPieceAt(gameState.board, { row, col })
+        if (piece && piece.type === 'king' && piece.color === kingColor) {
+          return getMeshAtPosition({ row, col })
+        }
+      }
+    }
+    
+    return null
+  }, [gameState, getMeshAtPosition])
+
+  // Update highlights with check detection
+  // Supports multiple simultaneous highlights (e.g., king in check + hovered piece)
+  useEffect(() => {
+    const highlights = new Map<string, ThreeColor>()
+    
+    if (gameMode === 'play') {
+      const kingInCheckMesh = getKingInCheckMesh()
+      
+      if (selectedSquare) {
+        // Show green glow on selected piece (takes priority)
+        const meshName = getMeshAtPosition(selectedSquare)
+        if (meshName) {
+          highlights.set(meshName, new ThreeColor(0x00ff00))
+        }
+        // Also show king in check if it's not the selected piece
+        if (kingInCheckMesh && kingInCheckMesh !== meshName) {
+          highlights.set(kingInCheckMesh, new ThreeColor(0xff4444))
+        }
+      } else if (hoveredPiece) {
+        // Show blue glow on hovered piece
+        highlights.set(hoveredPiece, new ThreeColor(0x00aaff))
+        // Also show king in check if not hovering the king itself
+        // (hovering king = player is considering moving it to escape check)
+        if (kingInCheckMesh && kingInCheckMesh !== hoveredPiece) {
+          highlights.set(kingInCheckMesh, new ThreeColor(0xff4444))
+        }
+      } else if (kingInCheckMesh) {
+        // No selection or hover - just show king in check
+        highlights.set(kingInCheckMesh, new ThreeColor(0xff4444))
+      }
+    } else {
+      // Demo mode: single highlight
+      if (selectedPiece) {
+        highlights.set(selectedPiece, new ThreeColor(0x00ff00))
+      } else if (hoveredPiece) {
+        highlights.set(hoveredPiece, new ThreeColor(0x00aaff))
+      }
+    }
+    
+    setHighlights(highlights)
+  }, [
+    selectedPiece,
+    hoveredPiece,
+    selectedSquare,
+    gameMode,
+    getKingInCheckMesh,
+    getMeshAtPosition,
+    setHighlights
+  ])
 
   // Handle click on scene objects
   const handleClick = (event: { stopPropagation: () => void; object: Object3D; pointer: { x: number }; point: Vector3 }) => {
@@ -351,7 +622,7 @@ export const Scene = ({
   }
 
   // Handle pointer over/out for cursor and hover highlight
-  const handlePointerOver = (event: { stopPropagation: () => void; object: Object3D }) => {
+  const handlePointerOver = (event: { stopPropagation: () => void; object: Object3D; point: Vector3 }) => {
     event.stopPropagation()
     let target = event.object as Object3D
     while (target && !target.name.startsWith('piece_')) {
@@ -359,10 +630,20 @@ export const Scene = ({
     }
     
     if (target && target.name.startsWith('piece_')) {
-      // In play mode, only allow hover on player's own pieces
-      if (gameMode === 'play' && playerColor) {
+      // In play mode, track hover for both selection feedback and capture indicators
+      if (gameMode === 'play' && gameState) {
         const pieceColor = getPieceColorFromName(target.name)
-        if (pieceColor === playerColor) {
+        
+        // Track hover position for capture indicator feedback (any piece on valid move square)
+        if (selectedSquare && validMoves.length > 0) {
+          const hoverPos = worldPositionToPosition(event.point.x, event.point.z)
+          if (hoverPos && validMoves.some(m => m.row === hoverPos.row && m.col === hoverPos.col)) {
+            setHoveredIndicatorSquare(hoverPos)
+          }
+        }
+        
+        // Blue highlight feedback only for current turn's pieces (selectability hint)
+        if (pieceColor === gameState.currentTurn) {
           setIsHoveringPiece(true)
           onPieceHover(target.name)
         }
@@ -376,6 +657,7 @@ export const Scene = ({
 
   const handlePointerOut = () => {
     setIsHoveringPiece(false)
+    setHoveredIndicatorSquare(null)
     onPieceHover(null)
   }
 
@@ -396,6 +678,48 @@ export const Scene = ({
       }
     }
   }, [selectedPiece, hoveredPiece, gameMode])
+
+  // Reset piece visibility and positions when exiting play mode
+  useEffect(() => {
+    if (gameMode === 'demo') {
+      // Clear any active animations
+      activeAnimations.current.clear()
+      fadingPieces.current.clear()
+      
+      // Make all captured pieces visible again and reset opacity
+      capturedMeshes.current.forEach(meshName => {
+        const mesh = pieceMeshes.get(meshName)
+        if (mesh) {
+          mesh.visible = true
+          // Reset opacity on all materials
+          mesh.traverse((child) => {
+            if ((child as Mesh).isMesh) {
+              const m = child as Mesh
+              const materials = Array.isArray(m.material) ? m.material : [m.material]
+              materials.forEach(mat => {
+                if (mat) mat.opacity = 1
+              })
+            }
+          })
+        }
+      })
+      capturedMeshes.current.clear()
+      
+      // Reset piece positions to initial squares
+      pieceMeshes.forEach((mesh, meshName) => {
+        const initialSquare = getMeshInitialSquare(meshName)
+        if (initialSquare) {
+          const pos = squareToPosition(initialSquare)
+          const worldPos = positionToWorldPosition(pos)
+          mesh.position.set(worldPos.x, worldPos.y, worldPos.z)
+        }
+      })
+      
+      // Clear tracking
+      pieceSquares.current.clear()
+      previousMoveCount.current = 0
+    }
+  }, [gameMode, pieceMeshes])
 
   // Camera locking for play mode
   useEffect(() => {
@@ -515,6 +839,7 @@ export const Scene = ({
         <MoveIndicator 
           positions={validMoves}
           capturePositions={capturePositions}
+          externalHoveredSquare={hoveredIndicatorSquare}
         />
       )}
       

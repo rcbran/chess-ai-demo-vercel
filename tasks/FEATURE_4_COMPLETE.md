@@ -1,7 +1,8 @@
 # Feature 4: Camera Locking for Play Mode ✅ COMPLETE
 
 **Branch:** `feature/camera-locking`  
-**Status:** Ready for Review
+**PR:** [#6](https://github.com/rcbran/chess-ai-demo-vercel/pull/6)  
+**Status:** ✅ Merged
 
 ## Implementation Summary
 

@@ -1,8 +1,75 @@
-/* Exit Play Button - Temporary button to return to demo mode */
-.exit-play-button {
+/* Game Controls Container */
+.game-controls {
   position: fixed;
   top: 24px;
   right: 80px; /* To the left of About button */
+  z-index: 200;
+  
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  
+  transition: all 0.3s ease-out;
+}
+
+.game-controls.hidden {
+  opacity: 0;
+  transform: translateY(-10px);
+  pointer-events: none;
+}
+
+/* Shared button styles */
+.game-control-button {
+  padding: 8px 16px;
+  border-radius: 20px;
+  
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  letter-spacing: 0.5px;
+  
+  cursor: pointer;
+  transition: all 0.3s ease-out;
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.game-control-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  transform: scale(1.05);
+}
+
+.game-control-button:active {
+  transform: scale(0.95);
+}
+
+/* Reset button specific styling */
+.game-control-button.reset-button {
+  background: rgba(255, 180, 100, 0.15);
+  border-color: rgba(255, 180, 100, 0.3);
+  color: rgba(255, 200, 150, 0.8);
+}
+
+.game-control-button.reset-button:hover {
+  background: rgba(255, 180, 100, 0.25);
+  color: #ffcc99;
+}
+
+/* Legacy exit-play-button (backwards compatibility) */
+.exit-play-button {
+  position: fixed;
+  top: 24px;
+  right: 80px;
   z-index: 200;
   
   padding: 8px 16px;
@@ -45,6 +112,16 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+  .game-controls {
+    top: 16px;
+    right: 68px;
+  }
+  
+  .game-control-button {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
   .exit-play-button {
     top: 16px;
     right: 68px;
