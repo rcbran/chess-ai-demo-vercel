@@ -11,10 +11,10 @@ import { TitleOverlay } from './components/TitleOverlay'
 import { Effects } from './components/Effects'
 import { AnimatedBackground, AmbientParticles } from './components/AnimatedBackground'
 import { pieceData, type PieceType } from './data/pieceData'
+import type { Color } from './game/types'
 import './App.css'
 
 type GameMode = 'demo' | 'play'
-type Color = 'white' | 'black'
 
 interface SelectedPiece {
   type: PieceType
@@ -26,8 +26,8 @@ interface SelectedPiece {
 const App = () => {
   // Game mode state
   const [gameMode, setGameMode] = useState<GameMode>('demo')
-  // @ts-expect-error - playerColor will be used in Feature 4 for camera locking
-  const [playerColor, setPlayerColor] = useState<Color | null>(null)
+  // playerColor will be used in Feature 4 for camera locking
+  const [_playerColor, setPlayerColor] = useState<Color | null>(null)
   const [isSideSelectionOpen, setIsSideSelectionOpen] = useState(false)
   
   // Demo mode state
