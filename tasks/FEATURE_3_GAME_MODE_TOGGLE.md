@@ -142,7 +142,7 @@ interface SceneProps {
 
 ## File Structure
 
-```
+```text
 src/
   components/
     PlayButton.tsx          # NEW - Play button overlay
@@ -156,7 +156,7 @@ src/
 
 ## User Flow
 
-```
+```text
 1. User sees "Play" button (top-left or center)
 2. User clicks "Play" button
    → gameMode = 'play'
