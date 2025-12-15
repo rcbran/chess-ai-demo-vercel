@@ -1,23 +1,26 @@
-import { useRef } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { useProgress } from '@react-three/drei'
 import './Loader.css'
 
 export const Loader = () => {
   const { progress, active } = useProgress()
+  const maxProgress = useRef(0)
+  const [displayProgress, setDisplayProgress] = useState(0)
   
   // Track the maximum progress to prevent backwards jumps
-  const maxProgress = useRef(0)
-  if (progress > maxProgress.current) {
-    maxProgress.current = progress
-  }
+  useEffect(() => {
+    if (active && progress > maxProgress.current) {
+      maxProgress.current = progress
+      setDisplayProgress(Math.round(maxProgress.current))
+    } else if (!active) {
+      maxProgress.current = 0
+      setDisplayProgress(0)
+    }
+  }, [progress, active])
   
-  // Reset max when loading completes
   if (!active) {
-    maxProgress.current = 0
     return null
   }
-  
-  const displayProgress = Math.round(maxProgress.current)
   
   return (
     <div className="loader-container">

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useMemo, useCallback } from 'react'
+import { useRef, useEffect, useMemo, useCallback, useState, type ComponentRef } from 'react'
 import { useThree } from '@react-three/fiber'
 import { useGLTF, OrbitControls } from '@react-three/drei'
 import { Color, MeshStandardMaterial, type Group, type Mesh, type Object3D, type Material } from 'three'
@@ -17,13 +17,27 @@ const originalMaterials = new Map<string, Material | Material[]>()
 
 export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece, hoveredPiece }: SceneProps) => {
   const groupRef = useRef<Group>(null)
-  const controlsRef = useRef<any>(null)
+  const controlsRef = useRef<ComponentRef<typeof OrbitControls>>(null)
   
   // Load the chess model
   const { scene } = useGLTF('/models/chess_set_4k.gltf')
   
   // Get the Three.js state for pointer cursor
   const { gl } = useThree()
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const [isHoveringPiece, setIsHoveringPiece] = useState(false)
+  
+  // Store canvas element reference
+  useEffect(() => {
+    canvasRef.current = gl.domElement
+  }, [gl.domElement])
+  
+  // Update cursor style based on hover state
+  useEffect(() => {
+    if (canvasRef.current) {
+      canvasRef.current.style.cursor = isHoveringPiece ? 'pointer' : 'auto'
+    }
+  }, [isHoveringPiece])
   
   // Clone the scene to avoid modifying the cached original
   const clonedScene = useMemo(() => scene.clone(), [scene])
@@ -106,7 +120,7 @@ export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece,
   }, [selectedPiece, hoveredPiece, setHighlight])
 
   // Handle click on scene objects
-  const handleClick = (event: any) => {
+  const handleClick = (event: { stopPropagation: () => void; object: Object3D; pointer: { x: number } }) => {
     event.stopPropagation()
     
     const clickedObject = event.object as Object3D
@@ -136,7 +150,7 @@ export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece,
   }
 
   // Handle pointer over/out for cursor and hover highlight
-  const handlePointerOver = (event: any) => {
+  const handlePointerOver = (event: { stopPropagation: () => void; object: Object3D }) => {
     event.stopPropagation()
     let target = event.object as Object3D
     while (target && !target.name.startsWith('piece_')) {
@@ -144,13 +158,13 @@ export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece,
     }
     
     if (target && target.name.startsWith('piece_')) {
-      gl.domElement.style.cursor = 'pointer'
+      setIsHoveringPiece(true)
       onPieceHover(target.name)
     }
   }
 
   const handlePointerOut = () => {
-    gl.domElement.style.cursor = 'auto'
+    setIsHoveringPiece(false)
     onPieceHover(null)
   }
 
