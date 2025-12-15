@@ -190,6 +190,9 @@ export const Scene = ({
       const meshName = getMeshAtPosition(selectedSquare)
       if (meshName) {
         setHighlight(meshName, new ThreeColor(0x00ff00)) // Bright green for selected
+      } else {
+        // If mesh lookup fails, reset highlight to avoid stuck highlights
+        setHighlight(null, null)
       }
     } else if (selectedPiece) {
       setHighlight(selectedPiece, new ThreeColor(0x00ff00)) // Bright green for selected
@@ -350,12 +353,22 @@ export const Scene = ({
     }
   }, [gameMode, playerColor, camera])
 
-  // Calculate capture positions (valid moves where there's an opponent piece)
+  // Calculate capture positions (valid moves where there's an opponent piece or en passant)
   const capturePositions = useMemo(() => {
     if (!gameState || validMoves.length === 0) return []
     return validMoves.filter(pos => {
+      // Check if there's a piece at the destination (regular capture)
       const piece = getPieceAt(gameState.board, pos)
-      return piece !== null
+      if (piece !== null) return true
+      
+      // Check if this is an en passant capture (lands on empty enPassantTarget square)
+      if (gameState.enPassantTarget &&
+          pos.row === gameState.enPassantTarget.row &&
+          pos.col === gameState.enPassantTarget.col) {
+        return true
+      }
+      
+      return false
     })
   }, [gameState, validMoves])
 
