@@ -256,8 +256,18 @@ export const Scene = ({
     }
     
     if (target && target.name.startsWith('piece_')) {
-      setIsHoveringPiece(true)
-      onPieceHover(target.name)
+      // In play mode, only allow hover on player's own pieces
+      if (gameMode === 'play' && playerColor) {
+        const pieceColor = getPieceColorFromName(target.name)
+        if (pieceColor === playerColor) {
+          setIsHoveringPiece(true)
+          onPieceHover(target.name)
+        }
+      } else {
+        // Demo mode: allow hover on all pieces
+        setIsHoveringPiece(true)
+        onPieceHover(target.name)
+      }
     }
   }
 
