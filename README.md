@@ -1,21 +1,26 @@
 # 3D Interactive Chess Demo
 
-An interactive 3D chess set built with React and Three.js. Click on any chess piece to learn about its movement rules, value, and special abilities.
+An interactive 3D chess set built with React and Three.js. Play against a Stockfish AI opponent or explore pieces in demo mode to learn about their movement rules, value, and special abilities.
 
 ![Chess Demo](https://img.shields.io/badge/React-19-blue) ![Three.js](https://img.shields.io/badge/Three.js-0.182-green) ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)
 
 ## Features
 
 - **3D Chess Set** - Beautiful 4K textured chess pieces and board rendered in real-time 3D
-- **Auto-Rotating Camera** - Smooth orbiting camera that showcases the chess set
-- **Interactive Pieces** - Hover over pieces to highlight them, click to learn more
+- **Two Game Modes**:
+  - **Demo Mode** - Explore pieces, learn rules, and see movement patterns
+  - **Play Mode** - Play against Stockfish AI with full chess rules
+- **AI Opponent** - Stockfish 17.1 engine with configurable difficulty
+- **Interactive Pieces** - Hover over pieces to highlight them, click to select and see valid moves
+- **Move Execution** - Smooth 3D animations for piece movement and captures
+- **Visual Feedback** - Highlights for selected pieces, valid moves, captures, and check
 - **Piece Information Panel** - Glassmorphic UI panel showing:
   - Piece name and color
   - Movement rules
   - Special abilities (castling, en passant, promotion)
   - Visual movement pattern grid
   - Point value
-- **Smooth Animations** - Panel slide-in/out, hover slowdown, material highlighting
+- **Smooth Animations** - Panel slide-in/out, piece movement, hover effects, material highlighting
 - **Loading Screen** - Progress indicator while the 3D model loads
 
 ## Tech Stack
@@ -24,6 +29,7 @@ An interactive 3D chess set built with React and Three.js. Click on any chess pi
 - **Three.js** - 3D rendering engine
 - **React Three Fiber** - React renderer for Three.js
 - **React Three Drei** - Useful helpers for R3F (OrbitControls, useGLTF, useProgress)
+- **Stockfish.js** - WebAssembly chess engine for AI opponent
 - **TypeScript** - Type safety
 - **Vite** - Build tool and dev server
 
@@ -92,66 +98,29 @@ Three.js materials are cloned and modified to add emissive properties for the gl
 ```
 src/
 ├── components/
-│   ├── Scene.tsx      # 3D scene with chess model, lighting, controls
-│   ├── InfoPanel.tsx  # Piece information overlay
-│   ├── InfoPanel.css  # Glassmorphic panel styling
-│   ├── Loader.tsx     # Loading spinner with progress
-│   └── Loader.css     # Loader styling
+│   ├── Scene.tsx              # 3D scene with chess model, lighting, controls
+│   ├── InfoPanel.tsx          # Piece information overlay (demo mode)
+│   ├── TitleOverlay.tsx       # Title and play button
+│   ├── SideSelectionModal.tsx # White/Black selection modal
+│   ├── GameControls.tsx       # Back and Reset buttons (play mode)
+│   ├── TurnIndicator.tsx      # "Your turn" / "Thinking..." indicator
+│   ├── MoveIndicator.tsx      # Visual move/capture indicators
+│   └── Loader.tsx             # Loading spinner with progress
+├── game/
+│   ├── chessEngine.ts         # Core chess logic (moves, validation, FEN)
+│   ├── ai.ts                  # Stockfish AI wrapper
+│   └── types.ts               # TypeScript types for game state
 ├── data/
-│   └── pieceData.ts   # Chess piece definitions (names, rules, patterns)
-├── App.tsx            # Main app with Canvas and state management
-├── App.css            # Full-screen black background
-├── index.css          # CSS reset
-└── main.tsx           # App entry point
+│   └── pieceData.ts           # Chess piece definitions (names, rules, patterns)
+├── App.tsx                    # Main app with Canvas and state management
+├── App.css                    # Full-screen black background
+├── index.css                  # CSS reset
+└── main.tsx                   # App entry point
 
 public/
 └── models/
-    └── chess_set_4k.glb  # 3D chess model with textures
+    └── chess_set_4k.gltf      # 3D chess model with textures
 ```
-
-## Controls
-
-| Action | Result |
-|--------|--------|
-| **Hover** piece | Blue highlight, rotation slows |
-| **Click** piece | Opens info panel, rotation stops |
-| **Click** board/empty | Closes info panel |
-| **Press** Escape | Closes info panel |
-| **Drag** | Rotate camera manually |
-| **Scroll** | Zoom in/out |
-| **Right-drag** | Pan camera |
-
-## Customization
-
-### Adjusting Camera
-
-In `Scene.tsx`, modify the `OrbitControls` props:
-```tsx
-<OrbitControls 
-  autoRotate
-  autoRotateSpeed={0.5}  // Rotation speed
-/>
-```
-
-In `App.tsx`, modify the initial camera position:
-```tsx
-camera={{ 
-  position: [0, 0.4, 0.65],  // [x, y, z]
-  fov: 45,
-}}
-```
-
-### Changing Highlight Colors
-
-In `Scene.tsx`, modify the colors in the `useEffect`:
-```tsx
-setHighlight(selectedPiece, new Color(0x00ff00))  // Selected: green
-setHighlight(hoveredPiece, new Color(0x00aaff))   // Hover: blue
-```
-
-### Updating Piece Information
-
-Edit `src/data/pieceData.ts` to modify piece descriptions, rules, or movement patterns.
 
 ## License
 
