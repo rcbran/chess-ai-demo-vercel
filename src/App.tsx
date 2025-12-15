@@ -1,5 +1,8 @@
 import { Suspense, useState, useCallback, useRef } from 'react'
 import { AboutModal, AboutButton } from './components/AboutModal'
+import { PlayButton } from './components/PlayButton'
+import { SideSelectionModal } from './components/SideSelectionModal'
+import { ExitPlayButton } from './components/ExitPlayButton'
 import { Canvas } from '@react-three/fiber'
 import { Scene } from './components/Scene'
 import { InfoPanel } from './components/InfoPanel'
@@ -10,6 +13,9 @@ import { AnimatedBackground, AmbientParticles } from './components/AnimatedBackg
 import { pieceData, type PieceType } from './data/pieceData'
 import './App.css'
 
+type GameMode = 'demo' | 'play'
+type Color = 'white' | 'black'
+
 interface SelectedPiece {
   type: PieceType
   color: 'white' | 'black'
@@ -18,6 +24,13 @@ interface SelectedPiece {
 }
 
 const App = () => {
+  // Game mode state
+  const [gameMode, setGameMode] = useState<GameMode>('demo')
+  // @ts-expect-error - playerColor will be used in Feature 4 for camera locking
+  const [playerColor, setPlayerColor] = useState<Color | null>(null)
+  const [isSideSelectionOpen, setIsSideSelectionOpen] = useState(false)
+  
+  // Demo mode state
   const [selectedPiece, setSelectedPiece] = useState<SelectedPiece | null>(null)
   const [displayedPiece, setDisplayedPiece] = useState<SelectedPiece | null>(null)
   const [isClosing, setIsClosing] = useState(false)
@@ -25,12 +38,44 @@ const App = () => {
   const [isAboutOpen, setIsAboutOpen] = useState(false)
   const closeTimeoutRef = useRef<number | null>(null)
 
+  // Game mode handlers
+  const handlePlayButtonClick = useCallback(() => {
+    setGameMode('play')
+    setIsSideSelectionOpen(true)
+  }, [])
+
+  const handleSideSelection = useCallback((color: Color) => {
+    setPlayerColor(color)
+    setIsSideSelectionOpen(false)
+    // Future: Initialize game state, lock camera, etc.
+    console.log(`Game mode: play, Player color: ${color}`)
+  }, [])
+
+  const handleCloseSideSelection = useCallback(() => {
+    // If user closes modal without selecting, return to demo mode
+    setIsSideSelectionOpen(false)
+    setGameMode('demo')
+    setPlayerColor(null)
+  }, [])
+
+  const handleExitToDemo = useCallback(() => {
+    setGameMode('demo')
+    setPlayerColor(null)
+    setIsSideSelectionOpen(false)
+    // Future: Clear game state, reset camera, etc.
+  }, [])
+
   const handlePieceClick = useCallback((
     pieceType: PieceType, 
     color: 'white' | 'black', 
     meshName: string,
     screenX: number
   ) => {
+    // Only handle piece clicks in demo mode
+    if (gameMode !== 'demo') {
+      return
+    }
+    
     // Clear any pending close timeout
     if (closeTimeoutRef.current) {
       clearTimeout(closeTimeoutRef.current)
@@ -55,7 +100,7 @@ const App = () => {
       setSelectedPiece({ type: pieceType, color, meshName, side })
       setDisplayedPiece({ type: pieceType, color, meshName, side })
     }
-  }, [selectedPiece])
+  }, [gameMode, selectedPiece])
 
   const handleClosePanel = useCallback(() => {
     if (closeTimeoutRef.current) {
@@ -71,15 +116,20 @@ const App = () => {
   }, [])
 
   const handlePieceHover = useCallback((meshName: string | null) => {
+    // Only handle hover in demo mode
+    if (gameMode !== 'demo') {
+      return
+    }
     setHoveredPiece(meshName)
-  }, [])
+  }, [gameMode])
   
   // Handle clicking outside (on the canvas background)
   const handleCanvasClick = useCallback(() => {
-    if (selectedPiece && !isClosing) {
+    // Only handle background clicks in demo mode
+    if (gameMode === 'demo' && selectedPiece && !isClosing) {
       handleClosePanel()
     }
-  }, [selectedPiece, isClosing, handleClosePanel])
+  }, [gameMode, selectedPiece, isClosing, handleClosePanel])
 
   return (
     <div className="app-container">
@@ -104,6 +154,7 @@ const App = () => {
             onBoardClick={handleCanvasClick}
             selectedPiece={selectedPiece?.meshName ?? null}
             hoveredPiece={hoveredPiece}
+            gameMode={gameMode}
           />
           
           {/* Post-processing effects */}
@@ -112,12 +163,38 @@ const App = () => {
       </Canvas>
       
       <Loader />
-      <TitleOverlay hidden={displayedPiece !== null} />
       
-      <AboutButton onClick={() => setIsAboutOpen(true)} hidden={displayedPiece !== null || isAboutOpen} />
+      {/* Title overlay - only show in demo mode */}
+      <TitleOverlay hidden={gameMode === 'play' || displayedPiece !== null} />
+      
+      {/* Play button - only show in demo mode */}
+      <PlayButton 
+        onClick={handlePlayButtonClick} 
+        hidden={gameMode === 'play' || displayedPiece !== null || isAboutOpen} 
+      />
+      
+      {/* Exit button - only show in play mode */}
+      <ExitPlayButton 
+        onClick={handleExitToDemo} 
+        hidden={gameMode === 'demo'} 
+      />
+      
+      {/* About button - show in demo mode */}
+      <AboutButton 
+        onClick={() => setIsAboutOpen(true)} 
+        hidden={gameMode === 'play' || displayedPiece !== null || isAboutOpen} 
+      />
       <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
       
-      {displayedPiece && (
+      {/* Side selection modal - show when entering play mode */}
+      <SideSelectionModal 
+        isOpen={isSideSelectionOpen} 
+        onSelect={handleSideSelection}
+        onClose={handleCloseSideSelection}
+      />
+      
+      {/* Info panel - only show in demo mode */}
+      {gameMode === 'demo' && displayedPiece && (
         <InfoPanel
           piece={pieceData[displayedPiece.type]}
           pieceType={displayedPiece.type}

@@ -10,14 +10,18 @@ interface SceneProps {
   onBoardClick: () => void
   selectedPiece: string | null
   hoveredPiece: string | null
+  gameMode?: 'demo' | 'play'
 }
 
 // Store original materials for each mesh
 const originalMaterials = new Map<string, Material | Material[]>()
 
-export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece, hoveredPiece }: SceneProps) => {
+export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece, hoveredPiece, gameMode = 'demo' }: SceneProps) => {
   const groupRef = useRef<Group>(null)
   const controlsRef = useRef<ComponentRef<typeof OrbitControls>>(null)
+  
+  // Log game mode for debugging (will be used in Feature 4 for camera locking)
+  console.log('Scene game mode:', gameMode)
   
   // Load the chess model
   const { scene } = useGLTF('/models/chess_set_4k.gltf')
