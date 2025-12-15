@@ -1,4 +1,4 @@
-import { Suspense, useState, useCallback, useRef } from 'react'
+import { Suspense, useState, useCallback, useRef, useEffect } from 'react'
 import { AboutModal, AboutButton } from './components/AboutModal'
 import { Canvas } from '@react-three/fiber'
 import { Scene } from './components/Scene'
@@ -106,6 +106,19 @@ const App = () => {
       handleClosePanel()
     }
   }, [gameMode, selectedPiece, isClosing, handleClosePanel])
+
+  // Handle Escape key to exit play mode
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && gameMode === 'play') {
+        setGameMode('demo')
+        setPlayerColor(null)
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [gameMode])
 
   return (
     <div className="app-container">
