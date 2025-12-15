@@ -218,6 +218,8 @@ export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece,
   useEffect(() => {
     const controls = controlsRef.current
     if (!controls) return
+    
+    let animationFrameId: number | null = null
 
     if (gameMode === 'play' && playerColor) {
       // Get target camera config based on player color
@@ -241,7 +243,7 @@ export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece,
         controls.update()
 
         if (progress < 1) {
-          requestAnimationFrame(animateCamera)
+          animationFrameId = requestAnimationFrame(animateCamera)
         } else {
           // Animation complete - apply play mode limits relative to final position
           const polarAngle = controls.getPolarAngle()
@@ -271,6 +273,13 @@ export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece,
       controls.maxDistance = Infinity
       controls.enablePan = true
       controls.update()
+    }
+    
+    // Cleanup: cancel animation frame if effect re-runs or component unmounts
+    return () => {
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId)
+      }
     }
   }, [gameMode, playerColor, camera])
 
