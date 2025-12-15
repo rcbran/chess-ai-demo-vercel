@@ -101,10 +101,15 @@ export class StockfishAI {
 
         this.worker.onerror = (error) => {
           console.error('Stockfish worker error:', error)
+          // Clean up the broken worker and reset state
           if (timeoutId) {
             clearTimeout(timeoutId)
             timeoutId = null
           }
+          this.worker?.terminate()
+          this.worker = null
+          this.isReady = false
+          this.messageHandler = null
           reject(error)
         }
 
@@ -164,12 +169,13 @@ export class StockfishAI {
       this.messageHandler = (message) => {
         // Parse bestmove response
         // Format: "bestmove e2e4" or "bestmove e7e8q" (with promotion)
-        const match = message.match(/^bestmove\s+(\w+)/)
+        // Use \S+ to capture non-space tokens like "(none)"
+        const match = message.match(/^bestmove\s+(\S+)/)
         if (match) {
           const moveStr = match[1]
           
-          if (moveStr === '(none)') {
-            // No legal moves (checkmate or stalemate)
+          // Handle no-move/game-over cases: "(none)", "0000", or any token < 4 chars
+          if (moveStr === '(none)' || moveStr === '0000' || moveStr.length < 4) {
             cleanup()
             resolve(null)
             return
@@ -177,7 +183,15 @@ export class StockfishAI {
           
           const fromSquare = moveStr.slice(0, 2)
           const toSquare = moveStr.slice(2, 4)
-          const promotionChar = moveStr[4] as 'q' | 'r' | 'b' | 'n' | undefined
+          
+          // Only parse promotion if length >= 5 and it's a valid promotion piece
+          let promotionChar: 'q' | 'r' | 'b' | 'n' | undefined
+          if (moveStr.length >= 5) {
+            const promoCandidate = moveStr[4]
+            if (promoCandidate === 'q' || promoCandidate === 'r' || promoCandidate === 'b' || promoCandidate === 'n') {
+              promotionChar = promoCandidate
+            }
+          }
           
           const from = squareToPosition(fromSquare)
           const to = squareToPosition(toSquare)
