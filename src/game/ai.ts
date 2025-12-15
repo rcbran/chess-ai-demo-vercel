@@ -153,6 +153,8 @@ export class StockfishAI {
 
       // Timeout after 30 seconds
       const timeoutId = setTimeout(() => {
+        // Stop the engine search to prevent stale bestmove from being misinterpreted
+        this.stop()
         cleanup()
         reject(new Error('AI move calculation timeout'))
       }, 30000)
