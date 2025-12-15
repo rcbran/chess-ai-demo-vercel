@@ -12,10 +12,10 @@ export const GameControls = ({ onExitToDemo, onResetBoard, hidden = false }: Gam
       <button 
         className="game-control-button"
         onClick={onExitToDemo}
-        aria-label="Exit to demo mode"
+        aria-label="Go back to demo mode"
         tabIndex={hidden ? -1 : 0}
       >
-        ← Demo
+        ← Back
       </button>
       <button 
         className="game-control-button reset-button"

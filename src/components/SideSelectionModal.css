@@ -15,16 +15,8 @@
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   
-  animation: fadeIn 0.3s ease-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  /* No animation - display immediately */
+  opacity: 1;
 }
 
 .side-selection-modal {
@@ -33,7 +25,7 @@
   max-width: 600px;
   padding: 48px 32px;
   
-  /* Glassmorphism */
+  /* Glassmorphism - reduced blur during animation */
   background: rgba(15, 15, 20, 0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -45,22 +37,12 @@
     0 8px 32px rgba(0, 0, 0, 0.6),
     0 0 0 1px rgba(255, 255, 255, 0.05) inset;
   
-  /* Animation */
-  animation: slideUp 0.4s ease-out;
+  /* No animation - display immediately at center */
+  opacity: 1;
+  transform: none;
   
   color: #fff;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .side-selection-modal .close-button {

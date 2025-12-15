@@ -1,0 +1,119 @@
+/* Turn Indicator - Shows current turn status at top of screen */
+.turn-indicator {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 150;
+  
+  padding: 10px 24px;
+  border-radius: 24px;
+  
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  
+  animation: fadeIn 0.3s ease-out;
+}
+
+.turn-indicator .turn-text {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Orbitron', sans-serif;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* AI Thinking state - subtle pulsing */
+.turn-indicator.thinking {
+  background: rgba(100, 150, 255, 0.2);
+  border-color: rgba(100, 150, 255, 0.4);
+}
+
+.turn-indicator.thinking .turn-text {
+  color: rgba(150, 200, 255, 0.95);
+}
+
+/* Animated thinking dots */
+.thinking-dots {
+  display: inline-flex;
+  margin-left: 2px;
+}
+
+.thinking-dots .dot {
+  color: rgba(150, 200, 255, 0.95);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Orbitron', sans-serif;
+  animation: dotPulse 1.4s ease-in-out infinite;
+}
+
+.thinking-dots .dot:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.thinking-dots .dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.thinking-dots .dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes dotPulse {
+  0%, 60%, 100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+/* Game Over state */
+.turn-indicator.game-over {
+  background: rgba(255, 200, 100, 0.2);
+  border-color: rgba(255, 200, 100, 0.4);
+  padding: 12px 28px;
+}
+
+.turn-indicator.game-over .turn-text {
+  color: rgba(255, 220, 150, 0.95);
+  font-size: 16px;
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .turn-indicator {
+    top: 50px;
+    padding: 8px 18px;
+  }
+  
+  .turn-indicator .turn-text {
+    font-size: 12px;
+  }
+  
+  .thinking-dots .dot {
+    font-size: 12px;
+  }
+}
+
