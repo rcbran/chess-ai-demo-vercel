@@ -259,32 +259,34 @@ Each feature will be developed as: **Branch → Implement → PR → Code Review
 
 **📋 Detailed Plan:** See `tasks/FEATURE_5_MOVE_SELECTION.md` for complete implementation details
 
-### Feature 6: Move Execution & Animation 🎯 **NEXT**
+### Feature 6: Move Execution & Animation ✅ **COMPLETED**
 
-**Branch:** `feature/move-execution`
+**Branch:** `feature/move-execution` ✅ **MERGED**
 
-- Execute moves when clicking valid destination (use existing `makeMove`)
-- Animate piece movement using `useFrame` (400ms ease-out)
-- Handle captured pieces (fade out 250ms)
-- Add red glow for king in check
-- Reset pieces correctly when exiting to demo mode
+- ✅ Execute moves when clicking valid destination (use existing `makeMove`)
+- ✅ Animate piece movement using `useFrame` (400ms ease-out)
+- ✅ Handle captured pieces (fade out 250ms with material cloning)
+- ✅ Add red glow for king in check (persists during hover)
+- ✅ Reset pieces correctly when exiting to demo mode
+- ✅ Add Reset Board button for play mode
+- ✅ Support multiple simultaneous highlights
 - **Depends on:** Feature 5
 
 **📋 Detailed Plan:** See `tasks/FEATURE_6_MOVE_EXECUTION.md` for complete implementation details
 
-**Note:** The chess engine's `makeMove` function already handles all move logic including castling, en passant, promotion, and check/checkmate detection. This feature focuses on the visual animation layer.
-
-### Feature 7: AI Integration
+### Feature 7: AI Integration 🎯 **NEXT**
 
 **Branch:** `feature/ai-integration`
 
-- Install `stockfish.js`
-- Create `src/game/ai.ts` - Stockfish service
-- Configure for maximum strength (unbeatable)
-- Integrate AI move calculation
-- Show "AI thinking..." indicator
-- Execute AI moves with animation
+- Install `stockfish` npm package (WebAssembly)
+- Create `src/game/ai.ts` - Stockfish service with Web Worker
+- UCI protocol communication (position, go depth, bestmove parsing)
+- Show "AI thinking..." indicator during calculation
+- Execute AI moves with same animation as player
+- Handle game end detection (no AI move after checkmate)
 - **Depends on:** Feature 6
+
+**📋 Detailed Plan:** See `tasks/FEATURE_7_AI_INTEGRATION.md` for complete implementation details
 
 ### Feature 8: Game UI & Controls
 

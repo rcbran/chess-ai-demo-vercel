@@ -1,8 +1,8 @@
 # Feature 6: Move Execution & Animation
 
 **Branch:** `feature/move-execution`  
-**PR:** N/A  
-**Status:** 📋 Planned
+**PR:** #8  
+**Status:** ✅ Merged
 
 ## Overview
 

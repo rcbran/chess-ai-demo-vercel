@@ -1,7 +1,8 @@
-import { Suspense, useState, useCallback, useRef } from 'react'
+import { Suspense, useState, useCallback, useRef, useEffect } from 'react'
 import { AboutModal, AboutButton } from './components/AboutModal'
 import { SideSelectionModal } from './components/SideSelectionModal'
 import { GameControls } from './components/ExitPlayButton'
+import { TurnIndicator } from './components/TurnIndicator'
 import { Canvas } from '@react-three/fiber'
 import { Scene } from './components/Scene'
 import { InfoPanel } from './components/InfoPanel'
@@ -11,7 +12,8 @@ import { Effects } from './components/Effects'
 import { AnimatedBackground, AmbientParticles } from './components/AnimatedBackground'
 import { pieceData, type PieceType } from './data/pieceData'
 import type { Color, GameState, Position } from './game/types'
-import { initializeGameState, getValidMoves, getPieceAt, makeMove } from './game/chessEngine'
+import { initializeGameState, getValidMoves, getPieceAt, makeMove, gameStateToFen } from './game/chessEngine'
+import { StockfishAI } from './game/ai'
 import './App.css'
 
 type GameMode = 'demo' | 'play'
@@ -34,6 +36,8 @@ const App = () => {
   const [selectedSquare, setSelectedSquare] = useState<Position | null>(null)
   const [validMoves, setValidMoves] = useState<Position[]>([])
   const [isMoveInProgress, setIsMoveInProgress] = useState(false)
+  const [isAIThinking, setIsAIThinking] = useState(false)
+  const stockfishRef = useRef<StockfishAI | null>(null)
   
   // Demo mode state
   const [selectedPiece, setSelectedPiece] = useState<SelectedPiece | null>(null)
@@ -42,6 +46,32 @@ const App = () => {
   const [hoveredPiece, setHoveredPiece] = useState<string | null>(null)
   const [isAboutOpen, setIsAboutOpen] = useState(false)
   const closeTimeoutRef = useRef<number | null>(null)
+
+  // Cleanup Stockfish on unmount
+  useEffect(() => {
+    return () => {
+      if (stockfishRef.current) {
+        stockfishRef.current.terminate()
+        stockfishRef.current = null
+      }
+    }
+  }, [])
+
+  // Initialize Stockfish when entering play mode (async, non-blocking)
+  useEffect(() => {
+    if (gameMode === 'play' && playerColor && !stockfishRef.current) {
+      const initAI = async () => {
+        try {
+          stockfishRef.current = new StockfishAI()
+          await stockfishRef.current.initialize({ depth: 15, skillLevel: 20 })
+          stockfishRef.current.newGame()
+        } catch (error) {
+          console.error('Failed to initialize Stockfish:', error)
+        }
+      }
+      initAI()
+    }
+  }, [gameMode, playerColor])
 
   // Game mode handlers
   const handlePlayButtonClick = useCallback(() => {
@@ -76,6 +106,13 @@ const App = () => {
     setGameState(null)
     setSelectedSquare(null)
     setValidMoves([])
+    setIsAIThinking(false)
+    
+    // Terminate Stockfish
+    if (stockfishRef.current) {
+      stockfishRef.current.terminate()
+      stockfishRef.current = null
+    }
   }, [])
 
   const handleResetBoard = useCallback(() => {
@@ -88,6 +125,13 @@ const App = () => {
     setSelectedSquare(null)
     setValidMoves([])
     setIsMoveInProgress(false)
+    setIsAIThinking(false)
+    
+    // Reset Stockfish for new game
+    if (stockfishRef.current) {
+      stockfishRef.current.stop()
+      stockfishRef.current.newGame()
+    }
   }, [playerColor])
 
   const handlePieceClick = useCallback((
@@ -153,14 +197,16 @@ const App = () => {
   }, [gameMode, selectedPiece, isClosing, handleClosePanel])
 
   // Handle square clicks in play mode
-  // Note: Currently allows manual play for both sides (AI integration deferred to Feature 7)
   const handleSquareClick = useCallback((position: Position) => {
-    if (!gameState || gameMode !== 'play' || isMoveInProgress) return
+    if (!gameState || gameMode !== 'play' || isMoveInProgress || isAIThinking) return
+    
+    // Only allow interaction on player's turn
+    if (gameState.currentTurn !== playerColor) return
 
     const clickedPiece = getPieceAt(gameState.board, position)
     
-    // Case 1: Clicking on current turn's piece - select it
-    if (clickedPiece && clickedPiece.color === gameState.currentTurn) {
+    // Case 1: Clicking on player's piece - select it
+    if (clickedPiece && clickedPiece.color === playerColor) {
       // If clicking the same piece, deselect
       if (selectedSquare && 
           selectedSquare.row === position.row && 
@@ -191,10 +237,18 @@ const App = () => {
       // Execute the move - new game state will trigger animation in Scene
       try {
         const newGameState = makeMove(gameState, from, to)
+        
+        // If next turn is AI's turn, show "AI thinking..." immediately
+        // (unless game is over)
+        if (playerColor && newGameState.currentTurn !== playerColor && !newGameState.isCheckmate && !newGameState.isStalemate) {
+          setIsAIThinking(true)
+        }
+        
         setGameState(newGameState)
       } catch (error) {
         console.error('Move execution failed:', error)
         setIsMoveInProgress(false)
+        setIsAIThinking(false)
       }
       return
     }
@@ -202,22 +256,59 @@ const App = () => {
     // Case 3: Clicking elsewhere - deselect
     setSelectedSquare(null)
     setValidMoves([])
-  }, [gameState, gameMode, selectedSquare, validMoves, isMoveInProgress])
+  }, [gameState, gameMode, playerColor, selectedSquare, validMoves, isMoveInProgress, isAIThinking])
 
   // Handle animation complete callback from Scene
-  const handleMoveAnimationComplete = useCallback(() => {
+  const handleMoveAnimationComplete = useCallback(async () => {
     setIsMoveInProgress(false)
     
-    // Log game status
-    if (gameState?.isCheckmate) {
-      const winner = gameState.currentTurn === 'white' ? 'Black' : 'White'
-      console.log(`Checkmate! ${winner} wins!`)
-    } else if (gameState?.isStalemate) {
-      console.log('Stalemate! Game is a draw.')
-    } else if (gameState?.isCheck) {
-      console.log(`${gameState.currentTurn} is in check!`)
+    // Check if game is over
+    if (gameState?.isCheckmate || gameState?.isStalemate) {
+      // Game over - don't trigger AI
+      setIsAIThinking(false)
+      return
     }
-  }, [gameState])
+    
+    // Check if it's AI's turn (current turn !== player color)
+    // Note: isAIThinking is already set to true when player executed their move
+    // and set to false immediately when AI selects its move
+    // Note: isAIThinking is already set to true when player executed their move
+    if (gameState && playerColor && gameState.currentTurn !== playerColor) {
+      // It's AI's turn - calculate and make move
+      if (!stockfishRef.current?.ready) {
+        console.error('Stockfish not ready')
+        setIsAIThinking(false)
+        return
+      }
+      
+      try {
+        // Minimum delay so user sees "AI thinking..." (500ms min)
+        const startTime = Date.now()
+        const fen = gameStateToFen(gameState)
+        const aiMove = await stockfishRef.current.calculateMove(fen)
+        
+        // Ensure minimum display time for "AI thinking..."
+        const elapsed = Date.now() - startTime
+        const minDisplayTime = 500
+        if (elapsed < minDisplayTime) {
+          await new Promise(resolve => setTimeout(resolve, minDisplayTime - elapsed))
+        }
+        
+        if (aiMove) {
+          // Execute AI move - show "Your turn" immediately
+          setIsMoveInProgress(true)
+          setIsAIThinking(false) // Show "Your turn" as soon as AI selects move
+          const newGameState = makeMove(gameState, aiMove.from, aiMove.to)
+          setGameState(newGameState)
+        } else {
+          setIsAIThinking(false)
+        }
+      } catch (error) {
+        console.error('AI move calculation failed:', error)
+        setIsAIThinking(false)
+      }
+    }
+  }, [gameState, playerColor])
 
   return (
     <div className="app-container">
@@ -270,6 +361,21 @@ const App = () => {
         onExitToDemo={handleExitToDemo}
         onResetBoard={handleResetBoard}
         hidden={gameMode === 'demo'} 
+      />
+      
+      {/* Turn indicator - show in play mode */}
+      <TurnIndicator
+        isPlayerTurn={gameState?.currentTurn === playerColor}
+        isAIThinking={isAIThinking}
+        isGameOver={gameState?.isCheckmate || gameState?.isStalemate || false}
+        gameOverMessage={
+          gameState?.isCheckmate 
+            ? (gameState.currentTurn === playerColor ? 'Checkmate! AI wins!' : 'Checkmate! You win!')
+            : gameState?.isStalemate 
+              ? 'Stalemate! Draw!'
+              : undefined
+        }
+        hidden={gameMode === 'demo'}
       />
       
       {/* About button - show in demo mode */}
