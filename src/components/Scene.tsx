@@ -193,7 +193,8 @@ export const Scene = ({
       }
     } else if (selectedPiece) {
       setHighlight(selectedPiece, new ThreeColor(0x00ff00)) // Bright green for selected
-    } else if (hoveredPiece && gameMode === 'demo') {
+    } else if (hoveredPiece) {
+      // Hover highlighting works in both demo and play modes
       setHighlight(hoveredPiece, new ThreeColor(0x00aaff)) // Bright blue for hover
     } else {
       setHighlight(null, null) // Reset all

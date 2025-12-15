@@ -128,12 +128,8 @@ const App = () => {
   }, [])
 
   const handlePieceHover = useCallback((meshName: string | null) => {
-    // Only handle hover in demo mode
-    if (gameMode !== 'demo') {
-      return
-    }
     setHoveredPiece(meshName)
-  }, [gameMode])
+  }, [])
   
   // Handle clicking outside (on the canvas background)
   const handleCanvasClick = useCallback(() => {
