@@ -374,49 +374,53 @@ export const Scene = ({
     }
   }, [gameState, gameMode, pieceMeshes])
 
+  // Helper function to reset all pieces to initial positions
+  // Used by both play mode reset and demo mode exit
+  const resetPiecesToInitialPositions = useCallback(() => {
+    // Clear any active animations
+    activeAnimations.current.clear()
+    fadingPieces.current.clear()
+    
+    // Make all captured pieces visible again and reset opacity
+    capturedMeshes.current.forEach(meshName => {
+      const mesh = pieceMeshes.get(meshName)
+      if (mesh) {
+        mesh.visible = true
+        mesh.traverse((child) => {
+          if ((child as Mesh).isMesh) {
+            const m = child as Mesh
+            const materials = Array.isArray(m.material) ? m.material : [m.material]
+            materials.forEach(mat => {
+              if (mat) mat.opacity = 1
+            })
+          }
+        })
+      }
+    })
+    capturedMeshes.current.clear()
+    
+    // Reset piece positions to initial squares (both tracking and mesh positions)
+    pieceSquares.current.clear()
+    pieceMeshes.forEach((mesh, meshName) => {
+      const initialSquare = getMeshInitialSquare(meshName)
+      if (initialSquare) {
+        const pos = squareToPosition(initialSquare)
+        pieceSquares.current.set(meshName, pos)
+        
+        const worldPos = positionToWorldPosition(pos)
+        mesh.position.set(worldPos.x, worldPos.y, worldPos.z)
+      }
+    })
+    
+    previousMoveCount.current = 0
+  }, [pieceMeshes])
+
   // Initialize/reset piece positions when entering play mode or resetting board
-  // This handles both initial setup and reset button functionality
   useEffect(() => {
     if (gameMode === 'play' && gameState && gameState.moveHistory.length === 0) {
-      // Clear any active animations
-      activeAnimations.current.clear()
-      fadingPieces.current.clear()
-      
-      // Make all captured pieces visible again and reset opacity
-      capturedMeshes.current.forEach(meshName => {
-        const mesh = pieceMeshes.get(meshName)
-        if (mesh) {
-          mesh.visible = true
-          mesh.traverse((child) => {
-            if ((child as Mesh).isMesh) {
-              const m = child as Mesh
-              const materials = Array.isArray(m.material) ? m.material : [m.material]
-              materials.forEach(mat => {
-                if (mat) mat.opacity = 1
-              })
-            }
-          })
-        }
-      })
-      capturedMeshes.current.clear()
-      
-      // Reset piece positions to initial squares (both tracking and mesh positions)
-      pieceSquares.current.clear()
-      pieceMeshes.forEach((mesh, meshName) => {
-        const initialSquare = getMeshInitialSquare(meshName)
-        if (initialSquare) {
-          const pos = squareToPosition(initialSquare)
-          pieceSquares.current.set(meshName, pos)
-          
-          // Also reset the actual mesh position
-          const worldPos = positionToWorldPosition(pos)
-          mesh.position.set(worldPos.x, worldPos.y, worldPos.z)
-        }
-      })
-      
-      previousMoveCount.current = 0
+      resetPiecesToInitialPositions()
     }
-  }, [gameMode, gameState, pieceMeshes])
+  }, [gameMode, gameState, resetPiecesToInitialPositions])
 
   // Sync pieceSquares when board changes (watch moveHistory length as proxy)
   // Note: This is now handled after animation completes, so we skip it here
@@ -682,44 +686,9 @@ export const Scene = ({
   // Reset piece visibility and positions when exiting play mode
   useEffect(() => {
     if (gameMode === 'demo') {
-      // Clear any active animations
-      activeAnimations.current.clear()
-      fadingPieces.current.clear()
-      
-      // Make all captured pieces visible again and reset opacity
-      capturedMeshes.current.forEach(meshName => {
-        const mesh = pieceMeshes.get(meshName)
-        if (mesh) {
-          mesh.visible = true
-          // Reset opacity on all materials
-          mesh.traverse((child) => {
-            if ((child as Mesh).isMesh) {
-              const m = child as Mesh
-              const materials = Array.isArray(m.material) ? m.material : [m.material]
-              materials.forEach(mat => {
-                if (mat) mat.opacity = 1
-              })
-            }
-          })
-        }
-      })
-      capturedMeshes.current.clear()
-      
-      // Reset piece positions to initial squares
-      pieceMeshes.forEach((mesh, meshName) => {
-        const initialSquare = getMeshInitialSquare(meshName)
-        if (initialSquare) {
-          const pos = squareToPosition(initialSquare)
-          const worldPos = positionToWorldPosition(pos)
-          mesh.position.set(worldPos.x, worldPos.y, worldPos.z)
-        }
-      })
-      
-      // Clear tracking
-      pieceSquares.current.clear()
-      previousMoveCount.current = 0
+      resetPiecesToInitialPositions()
     }
-  }, [gameMode, pieceMeshes])
+  }, [gameMode, resetPiecesToInitialPositions])
 
   // Camera locking for play mode
   useEffect(() => {

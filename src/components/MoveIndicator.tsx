@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useCallback } from 'react'
+import { useMemo, useRef, useState, useCallback, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { RingGeometry, CircleGeometry, MeshBasicMaterial, DoubleSide, type Mesh } from 'three'
 import type { Position } from '../game/types'
@@ -80,6 +80,14 @@ export const MoveIndicator = ({ positions, capturePositions = [], onHoverChange,
     setHoveredIndex(null)
     onHoverChange?.(null)
   }, [onHoverChange])
+
+  // Clear stale refs when positions array shrinks
+  useEffect(() => {
+    // Trim refs array to current positions length to prevent unbounded growth
+    if (meshRefs.current.length > positions.length) {
+      meshRefs.current.length = positions.length
+    }
+  }, [positions.length])
 
   // Subtle pulse animation (only for non-hovered indicators)
   useFrame(({ clock }) => {
