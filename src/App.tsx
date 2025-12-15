@@ -10,7 +10,8 @@ import { TitleOverlay } from './components/TitleOverlay'
 import { Effects } from './components/Effects'
 import { AnimatedBackground, AmbientParticles } from './components/AnimatedBackground'
 import { pieceData, type PieceType } from './data/pieceData'
-import type { Color } from './game/types'
+import type { Color, GameState, Position } from './game/types'
+import { initializeGameState, getValidMoves, getPieceAt, positionToSquare } from './game/chessEngine'
 import './App.css'
 
 type GameMode = 'demo' | 'play'
@@ -27,6 +28,11 @@ const App = () => {
   const [gameMode, setGameMode] = useState<GameMode>('demo')
   const [playerColor, setPlayerColor] = useState<Color | null>(null)
   const [isSideSelectionOpen, setIsSideSelectionOpen] = useState(false)
+  
+  // Play mode state
+  const [gameState, setGameState] = useState<GameState | null>(null)
+  const [selectedSquare, setSelectedSquare] = useState<Position | null>(null)
+  const [validMoves, setValidMoves] = useState<Position[]>([])
   
   // Demo mode state
   const [selectedPiece, setSelectedPiece] = useState<SelectedPiece | null>(null)
@@ -45,8 +51,13 @@ const App = () => {
   const handleSideSelection = useCallback((color: Color) => {
     setPlayerColor(color)
     setIsSideSelectionOpen(false)
-    // Future: Initialize game state, lock camera, etc.
-    console.log(`Game mode: play, Player color: ${color}`)
+    
+    // Initialize game state - player always moves first
+    const newGameState = initializeGameState()
+    newGameState.currentTurn = color
+    setGameState(newGameState)
+    setSelectedSquare(null)
+    setValidMoves([])
   }, [])
 
   const handleCloseSideSelection = useCallback(() => {
@@ -60,7 +71,10 @@ const App = () => {
     setGameMode('demo')
     setPlayerColor(null)
     setIsSideSelectionOpen(false)
-    // Future: Clear game state, reset camera, etc.
+    // Clear game state
+    setGameState(null)
+    setSelectedSquare(null)
+    setValidMoves([])
   }, [])
 
   const handlePieceClick = useCallback((
@@ -114,12 +128,8 @@ const App = () => {
   }, [])
 
   const handlePieceHover = useCallback((meshName: string | null) => {
-    // Only handle hover in demo mode
-    if (gameMode !== 'demo') {
-      return
-    }
     setHoveredPiece(meshName)
-  }, [gameMode])
+  }, [])
   
   // Handle clicking outside (on the canvas background)
   const handleCanvasClick = useCallback(() => {
@@ -128,6 +138,45 @@ const App = () => {
       handleClosePanel()
     }
   }, [gameMode, selectedPiece, isClosing, handleClosePanel])
+
+  // Handle square clicks in play mode
+  const handleSquareClick = useCallback((position: Position) => {
+    if (!gameState || gameMode !== 'play' || !playerColor) return
+
+    const clickedPiece = getPieceAt(gameState.board, position)
+    
+    // Case 1: Clicking on own piece - select it
+    if (clickedPiece && clickedPiece.color === playerColor) {
+      // If clicking the same piece, deselect
+      if (selectedSquare && 
+          selectedSquare.row === position.row && 
+          selectedSquare.col === position.col) {
+        setSelectedSquare(null)
+        setValidMoves([])
+        return
+      }
+      
+      // Select new piece and calculate valid moves
+      setSelectedSquare(position)
+      const moves = getValidMoves(gameState, position)
+      setValidMoves(moves)
+      return
+    }
+    
+    // Case 2: Clicking on valid move destination
+    if (selectedSquare && validMoves.some(m => m.row === position.row && m.col === position.col)) {
+      // This is a valid move - will be executed in Feature 6
+      console.log(`Move: ${positionToSquare(selectedSquare)} → ${positionToSquare(position)}`)
+      // For now, just deselect (move execution comes in Feature 6)
+      setSelectedSquare(null)
+      setValidMoves([])
+      return
+    }
+    
+    // Case 3: Clicking elsewhere - deselect
+    setSelectedSquare(null)
+    setValidMoves([])
+  }, [gameState, gameMode, playerColor, selectedSquare, validMoves])
 
   return (
     <div className="app-container">
@@ -154,6 +203,10 @@ const App = () => {
             hoveredPiece={hoveredPiece}
             gameMode={gameMode}
             playerColor={playerColor}
+            gameState={gameState}
+            selectedSquare={selectedSquare}
+            validMoves={validMoves}
+            onSquareClick={handleSquareClick}
           />
           
           {/* Post-processing effects - vignette only for performance */}

@@ -248,6 +248,7 @@ Each feature will be developed as: **Branch → Implement → PR → Code Review
 
 **Branch:** `feature/move-selection`
 
+- ✅ Removed description text from side selection modal buttons
 - Modify click handling in `Scene.tsx` for play mode
 - Select pieces (validate it's player's turn and piece)
 - Calculate and display valid moves
@@ -255,6 +256,8 @@ Each feature will be developed as: **Branch → Implement → PR → Code Review
 - Show selected piece glow (reuse existing highlight)
 - **Player always moves first** - regardless of chosen color (white or black)
 - **Depends on:** Features 1, 2, 3, 4 (all complete)
+
+**📋 Detailed Plan:** See `tasks/FEATURE_5_MOVE_SELECTION.md` for complete implementation details
 
 **Note:** In standard chess, white moves first. However, for better UX in this demo, the player always makes the first move regardless of their chosen side. When playing as black, the player moves first, then the AI (as white) responds.
 

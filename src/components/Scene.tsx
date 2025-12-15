@@ -3,7 +3,10 @@ import { useThree } from '@react-three/fiber'
 import { useGLTF, OrbitControls } from '@react-three/drei'
 import { Color as ThreeColor, MeshStandardMaterial, type Group, type Mesh, type Object3D, type Material, Vector3 } from 'three'
 import { getPieceTypeFromName, getPieceColorFromName, type PieceType } from '../data/pieceData'
-import type { Color } from '../game/types'
+import type { Color, GameState, Position } from '../game/types'
+import { MoveIndicator } from './MoveIndicator'
+import { worldPositionToPosition, getMeshInitialSquare, parseMeshName } from '../game/boardMapping'
+import { squareToPosition, getPieceAt } from '../game/chessEngine'
 
 interface SceneProps {
   onPieceClick: (pieceType: PieceType, color: 'white' | 'black', meshName: string, screenX: number) => void
@@ -13,6 +16,11 @@ interface SceneProps {
   hoveredPiece: string | null
   gameMode?: 'demo' | 'play'
   playerColor?: Color | null
+  // Play mode props
+  gameState?: GameState | null
+  selectedSquare?: Position | null
+  validMoves?: Position[]
+  onSquareClick?: (position: Position) => void
 }
 
 // Camera positions for each player perspective
@@ -40,9 +48,25 @@ const PLAY_MODE_LIMITS = {
 // Store original materials for each mesh
 const originalMaterials = new Map<string, Material | Material[]>()
 
-export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece, hoveredPiece, gameMode = 'demo', playerColor }: SceneProps) => {
+export const Scene = ({ 
+  onPieceClick, 
+  onPieceHover, 
+  onBoardClick, 
+  selectedPiece, 
+  hoveredPiece, 
+  gameMode = 'demo', 
+  playerColor,
+  gameState,
+  selectedSquare,
+  validMoves = [],
+  onSquareClick
+}: SceneProps) => {
   const groupRef = useRef<Group>(null)
   const controlsRef = useRef<ComponentRef<typeof OrbitControls>>(null)
+  
+  // Track current positions of all pieces (mesh name → current Position)
+  // At game start, pieces are at their initial positions
+  const pieceSquares = useRef<Map<string, Position>>(new Map())
   
   // Get camera from Three.js context for play mode positioning
   const { camera } = useThree()
@@ -136,23 +160,172 @@ export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece,
     })
   }, [pieceMeshes, createHighlightMaterial])
 
+  // Helper function to update piece position when a move is executed
+  // This will be called from move execution code in Feature 6
+  // @ts-expect-error - Intentionally unused until Feature 6
+  const _updatePiecePosition = useCallback((meshName: string, _from: Position, to: Position, capturedMeshName?: string | null) => {
+    // Update the moving piece's position
+    pieceSquares.current.set(meshName, to)
+    
+    // Remove captured piece if provided
+    if (capturedMeshName) {
+      pieceSquares.current.delete(capturedMeshName)
+    }
+  }, [])
+
+  // Rebuild pieceSquares from gameState.board by matching pieces to meshes
+  const rebuildPieceSquares = useCallback(() => {
+    if (!gameState || gameMode !== 'play') return
+    
+    // Create a map of available meshes by type/color
+    const availableMeshesByType = new Map<string, string[]>()
+    pieceMeshes.forEach((_, meshName) => {
+      const parsed = parseMeshName(meshName)
+      if (!parsed) return
+      
+      const key = `${parsed.type}-${parsed.color}`
+      if (!availableMeshesByType.has(key)) {
+        availableMeshesByType.set(key, [])
+      }
+      availableMeshesByType.get(key)!.push(meshName)
+    })
+    
+    // Track which meshes we've already assigned
+    const assignedMeshes = new Set<string>()
+    
+    // Get current pieceSquares to use as hints for stable matching
+    const currentPositions = new Map<string, Position>()
+    pieceSquares.current.forEach((pos, meshName) => {
+      currentPositions.set(meshName, pos)
+    })
+    
+    // First pass: try to keep meshes at their current positions (stable matching)
+    for (const [meshName, currentPos] of currentPositions.entries()) {
+      const piece = getPieceAt(gameState.board, currentPos)
+      const parsed = parseMeshName(meshName)
+      if (piece && parsed && piece.type === parsed.type && piece.color === parsed.color) {
+        // This mesh is still at this position - keep it
+        pieceSquares.current.set(meshName, currentPos)
+        assignedMeshes.add(meshName)
+      }
+    }
+    
+    // Second pass: assign remaining pieces to remaining meshes
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = getPieceAt(gameState.board, { row, col })
+        if (!piece) continue
+        
+        // Check if this position already has a mesh assigned
+        let alreadyAssigned = false
+        for (const [, pos] of pieceSquares.current.entries()) {
+          if (pos.row === row && pos.col === col) {
+            alreadyAssigned = true
+            break
+          }
+        }
+        if (alreadyAssigned) continue
+        
+        // Find an available mesh of matching type/color
+        const key = `${piece.type}-${piece.color}`
+        const availableMeshes = availableMeshesByType.get(key) || []
+        
+        for (const meshName of availableMeshes) {
+          if (!assignedMeshes.has(meshName)) {
+            pieceSquares.current.set(meshName, { row, col })
+            assignedMeshes.add(meshName)
+            break
+          }
+        }
+      }
+    }
+    
+    // Third pass: remove meshes for pieces that are no longer on the board
+    for (const [meshName, pos] of Array.from(pieceSquares.current.entries())) {
+      const pieceAtPos = getPieceAt(gameState.board, pos)
+      const parsed = parseMeshName(meshName)
+      if (!pieceAtPos || !parsed || pieceAtPos.type !== parsed.type || pieceAtPos.color !== parsed.color) {
+        pieceSquares.current.delete(meshName)
+      }
+    }
+  }, [gameState, gameMode, pieceMeshes])
+
+  // Initialize piece positions when entering play mode
+  useEffect(() => {
+    if (gameMode === 'play' && gameState) {
+      // If no moves have been made, use initial positions
+      if (gameState.moveHistory.length === 0) {
+        pieceSquares.current.clear()
+        pieceMeshes.forEach((_, meshName) => {
+          const square = getMeshInitialSquare(meshName)
+          if (square) {
+            pieceSquares.current.set(meshName, squareToPosition(square))
+          }
+        })
+      } else {
+        // Rebuild from current board state
+        rebuildPieceSquares()
+      }
+    }
+  }, [gameMode, gameState, pieceMeshes, rebuildPieceSquares])
+
+  // Sync pieceSquares when board changes (watch moveHistory length as proxy)
+  useEffect(() => {
+    if (gameMode === 'play' && gameState && gameState.moveHistory.length > 0) {
+      rebuildPieceSquares()
+    }
+  }, [gameMode, gameState, rebuildPieceSquares])
+
+  // Get the mesh name for a piece at a given position
+  const getMeshAtPosition = useCallback((position: Position): string | null => {
+    for (const [meshName, pos] of pieceSquares.current.entries()) {
+      if (pos.row === position.row && pos.col === position.col) {
+        return meshName
+      }
+    }
+    return null
+  }, [])
+
   // Update highlights when hover/selection changes
   useEffect(() => {
-    if (selectedPiece) {
+    // In play mode, highlight based on selectedSquare
+    if (gameMode === 'play' && selectedSquare) {
+      const meshName = getMeshAtPosition(selectedSquare)
+      if (meshName) {
+        setHighlight(meshName, new ThreeColor(0x00ff00)) // Bright green for selected
+      } else {
+        // If mesh lookup fails, reset highlight to avoid stuck highlights
+        setHighlight(null, null)
+      }
+    } else if (selectedPiece) {
       setHighlight(selectedPiece, new ThreeColor(0x00ff00)) // Bright green for selected
     } else if (hoveredPiece) {
+      // Hover highlighting works in both demo and play modes
       setHighlight(hoveredPiece, new ThreeColor(0x00aaff)) // Bright blue for hover
     } else {
       setHighlight(null, null) // Reset all
     }
-  }, [selectedPiece, hoveredPiece, setHighlight])
+  }, [selectedPiece, hoveredPiece, selectedSquare, gameMode, getMeshAtPosition, setHighlight])
 
   // Handle click on scene objects
-  const handleClick = (event: { stopPropagation: () => void; object: Object3D; pointer: { x: number } }) => {
+  const handleClick = (event: { stopPropagation: () => void; object: Object3D; pointer: { x: number }; point: Vector3 }) => {
     event.stopPropagation()
     
     const clickedObject = event.object as Object3D
     
+    // PLAY MODE: Handle piece selection and move targeting
+    if (gameMode === 'play' && onSquareClick) {
+      // Get the clicked position in world coordinates and convert to board position
+      const clickPoint = event.point
+      const position = worldPositionToPosition(clickPoint.x, clickPoint.z)
+      
+      if (position) {
+        onSquareClick(position)
+      }
+      return
+    }
+    
+    // DEMO MODE: Original behavior
     // Check if clicked on the board
     if (clickedObject.name === 'board') {
       onBoardClick()
@@ -186,8 +359,18 @@ export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece,
     }
     
     if (target && target.name.startsWith('piece_')) {
-      setIsHoveringPiece(true)
-      onPieceHover(target.name)
+      // In play mode, only allow hover on player's own pieces
+      if (gameMode === 'play' && playerColor) {
+        const pieceColor = getPieceColorFromName(target.name)
+        if (pieceColor === playerColor) {
+          setIsHoveringPiece(true)
+          onPieceHover(target.name)
+        }
+      } else {
+        // Demo mode: allow hover on all pieces
+        setIsHoveringPiece(true)
+        onPieceHover(target.name)
+      }
     }
   }
 
@@ -283,6 +466,25 @@ export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece,
     }
   }, [gameMode, playerColor, camera])
 
+  // Calculate capture positions (valid moves where there's an opponent piece or en passant)
+  const capturePositions = useMemo(() => {
+    if (!gameState || validMoves.length === 0) return []
+    return validMoves.filter(pos => {
+      // Check if there's a piece at the destination (regular capture)
+      const piece = getPieceAt(gameState.board, pos)
+      if (piece !== null) return true
+      
+      // Check if this is an en passant capture (lands on empty enPassantTarget square)
+      if (gameState.enPassantTarget &&
+          pos.row === gameState.enPassantTarget.row &&
+          pos.col === gameState.enPassantTarget.col) {
+        return true
+      }
+      
+      return false
+    })
+  }, [gameState, validMoves])
+
   return (
     <>
       {/* Lighting */}
@@ -307,6 +509,14 @@ export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece,
         onPointerOver={handlePointerOver}
         onPointerOut={handlePointerOut}
       />
+      
+      {/* Move indicators - show valid moves in play mode */}
+      {gameMode === 'play' && validMoves.length > 0 && (
+        <MoveIndicator 
+          positions={validMoves}
+          capturePositions={capturePositions}
+        />
+      )}
       
       {/* Camera controls - drag to rotate, scroll to zoom */}
       <OrbitControls 
