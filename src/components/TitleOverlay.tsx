@@ -17,12 +17,12 @@ export const TitleOverlay = ({ hidden = false, onPlayClick, showPlayButton = fal
           <button 
             className="play-button-inline"
             onClick={onPlayClick}
-            aria-label="Start playing chess"
+            aria-label="Play against AI"
             tabIndex={hidden ? -1 : 0}
           >
-            ♔
+            <span className="play-icon">♔</span>
+            <span className="play-text">Play against AI</span>
           </button>
-          <span className="play-text">Press to play against AI</span>
         </div>
       )}
     </div>
