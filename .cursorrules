@@ -5,7 +5,7 @@
 - **Repo:** chess-ai-demo-vercel
 
 ## Terminal Commands
-- **Working Directory:** The shell is already initialized in the workspace root (`/Users/rcbranham/git/chess-ai-demo-vercel`). Do NOT include `cd /Users/rcbranham/git/chess-ai-demo-vercel` in commands unless switching from a different directory context.
+- **Working Directory:** The shell is already initialized in the workspace root. Do NOT include `cd` commands to the repo root unless switching from a different directory context.
 - **Node.js Version:** This project uses `.nvmrc` to specify Node.js 25.2.1. If terminal commands show a different Node.js version, it's because the shell session doesn't auto-load nvm. The user's IDE/terminal should handle this automatically, but command outputs may show a different version if nvm isn't loaded in that shell session.
 
 ## CodeRabbit PR Review Workflow

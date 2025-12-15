@@ -113,8 +113,8 @@ interface SideSelectionModalProps {
 **File:** `src/App.tsx`
 
 **Updates:**
-- Only show `InfoPanel` when `gameMode === 'demo'`
-- Only allow piece clicks to open info panel in demo mode
+- Show `InfoPanel` when `gameMode === 'demo'`
+- Allow piece clicks to open info panel in demo mode
 - Show `PlayButton` when `gameMode === 'demo'`
 - Show `SideSelectionModal` when `gameMode === 'play' && playerColor === null`
 - Pass `gameMode` to `Scene` component (for future camera locking)
