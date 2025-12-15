@@ -25,8 +25,7 @@ interface SelectedPiece {
 const App = () => {
   // Game mode state
   const [gameMode, setGameMode] = useState<GameMode>('demo')
-  // playerColor will be used in Feature 4 for camera locking
-  const [_playerColor, setPlayerColor] = useState<Color | null>(null)
+  const [playerColor, setPlayerColor] = useState<Color | null>(null)
   const [isSideSelectionOpen, setIsSideSelectionOpen] = useState(false)
   
   // Demo mode state
@@ -154,9 +153,10 @@ const App = () => {
             selectedPiece={selectedPiece?.meshName ?? null}
             hoveredPiece={hoveredPiece}
             gameMode={gameMode}
+            playerColor={playerColor}
           />
           
-          {/* Post-processing effects */}
+          {/* Post-processing effects - vignette only for performance */}
           <Effects />
         </Suspense>
       </Canvas>
