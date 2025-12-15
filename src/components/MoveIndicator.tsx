@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { RingGeometry, MeshBasicMaterial, DoubleSide, type Mesh } from 'three'
 import type { Position } from '../game/types'
@@ -11,6 +11,11 @@ interface MoveIndicatorProps {
 
 export const MoveIndicator = ({ positions, capturePositions = [] }: MoveIndicatorProps) => {
   const meshRefs = useRef<(Mesh | null)[]>([])
+  
+  // Clear stale refs when positions change to avoid updating unmounted meshes
+  useEffect(() => {
+    meshRefs.current = []
+  }, [positions])
   
   // Create ring geometry for indicators
   const ringGeometry = useMemo(() => new RingGeometry(0.018, 0.024, 32), [])
@@ -41,7 +46,8 @@ export const MoveIndicator = ({ positions, capturePositions = [] }: MoveIndicato
   // Subtle pulse animation
   useFrame(({ clock }) => {
     const pulse = 0.6 + Math.sin(clock.elapsedTime * 3) * 0.25
-    meshRefs.current.forEach(mesh => {
+    // Use slice to avoid iterating over stale refs from previous positions
+    meshRefs.current.slice(0, positions.length).forEach(mesh => {
       if (mesh?.material && 'opacity' in mesh.material) {
         (mesh.material as MeshBasicMaterial).opacity = pulse
       }
