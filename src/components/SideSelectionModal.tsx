@@ -102,7 +102,6 @@ export const SideSelectionModal = ({ isOpen, onSelect, onClose }: SideSelectionM
           >
             <div className="side-icon">♔</div>
             <div className="side-label">Play as White</div>
-            <div className="side-description">You move first</div>
           </button>
           
           <button 
@@ -113,7 +112,6 @@ export const SideSelectionModal = ({ isOpen, onSelect, onClose }: SideSelectionM
           >
             <div className="side-icon">♚</div>
             <div className="side-label">Play as Black</div>
-            <div className="side-description">AI moves first</div>
           </button>
         </div>
       </div>
