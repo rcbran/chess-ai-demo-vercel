@@ -1,8 +1,9 @@
 import { useRef, useEffect, useMemo, useCallback, useState, type ComponentRef } from 'react'
 import { useThree } from '@react-three/fiber'
 import { useGLTF, OrbitControls } from '@react-three/drei'
-import { Color, MeshStandardMaterial, type Group, type Mesh, type Object3D, type Material } from 'three'
+import { Color as ThreeColor, MeshStandardMaterial, type Group, type Mesh, type Object3D, type Material } from 'three'
 import { getPieceTypeFromName, getPieceColorFromName, type PieceType } from '../data/pieceData'
+import type { Color } from '../game/types'
 
 interface SceneProps {
   onPieceClick: (pieceType: PieceType, color: 'white' | 'black', meshName: string, screenX: number) => void
@@ -11,16 +12,16 @@ interface SceneProps {
   selectedPiece: string | null
   hoveredPiece: string | null
   gameMode?: 'demo' | 'play'
+  playerColor?: Color | null
 }
 
 // Store original materials for each mesh
 const originalMaterials = new Map<string, Material | Material[]>()
 
-export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece, hoveredPiece, gameMode: _gameMode = 'demo' }: SceneProps) => {
+export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece, hoveredPiece, gameMode = 'demo', playerColor = null }: SceneProps) => {
   const groupRef = useRef<Group>(null)
   const controlsRef = useRef<ComponentRef<typeof OrbitControls>>(null)
-  
-  // TODO: Feature 4 - Use _gameMode for camera locking behavior
+  const { camera } = useThree()
   
   // Load the chess model
   const { scene } = useGLTF('/models/chess_set_4k.gltf')
@@ -74,7 +75,7 @@ export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece,
   }, [clonedScene])
 
   // Create highlight material
-  const createHighlightMaterial = useCallback((originalMat: Material, color: Color): Material => {
+  const createHighlightMaterial = useCallback((originalMat: Material, color: ThreeColor): Material => {
     const mat = originalMat.clone() as MeshStandardMaterial
     mat.emissive = color
     mat.emissiveIntensity = 1.5
@@ -82,7 +83,7 @@ export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece,
   }, [])
 
   // Apply highlight effect to a piece
-  const setHighlight = useCallback((pieceName: string | null, color: Color | null) => {
+  const setHighlight = useCallback((pieceName: string | null, color: ThreeColor | null) => {
     pieceMeshes.forEach((pieceObj, name) => {
       const isTarget = name === pieceName
       
@@ -114,9 +115,9 @@ export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece,
   // Update highlights when hover/selection changes
   useEffect(() => {
     if (selectedPiece) {
-      setHighlight(selectedPiece, new Color(0x00ff00)) // Bright green for selected
+      setHighlight(selectedPiece, new ThreeColor(0x00ff00)) // Bright green for selected
     } else if (hoveredPiece) {
-      setHighlight(hoveredPiece, new Color(0x00aaff)) // Bright blue for hover
+      setHighlight(hoveredPiece, new ThreeColor(0x00aaff)) // Bright blue for hover
     } else {
       setHighlight(null, null) // Reset all
     }
@@ -171,20 +172,45 @@ export const Scene = ({ onPieceClick, onPieceHover, onBoardClick, selectedPiece,
     onPieceHover(null)
   }
 
-  // Control auto-rotate based on selection and hover
+  // Control auto-rotate and camera locking based on game mode
   useEffect(() => {
     if (controlsRef.current) {
-      // Stop rotation when a piece is selected
-      controlsRef.current.autoRotate = selectedPiece === null
-      
-      // Slow down rotation when hovering
-      if (hoveredPiece && !selectedPiece) {
-        controlsRef.current.autoRotateSpeed = 0.05
+      if (gameMode === 'play') {
+        // Play mode: Disable auto-rotate and lock controls
+        controlsRef.current.autoRotate = false
+        controlsRef.current.enableRotate = false
+        controlsRef.current.enablePan = false
+        controlsRef.current.enableZoom = false
+        
+        // Set camera position based on player color
+        if (playerColor === 'white') {
+          // White side: Camera at [0, 0.35, 0.6] looking toward negative Z
+          camera.position.set(0, 0.35, 0.6)
+          camera.lookAt(0, 0, 0)
+        } else if (playerColor === 'black') {
+          // Black side: Camera at [0, 0.35, -0.6] looking toward positive Z (rotated 180°)
+          camera.position.set(0, 0.35, -0.6)
+          camera.lookAt(0, 0, 0)
+        }
+        controlsRef.current.update()
       } else {
-        controlsRef.current.autoRotateSpeed = 0.25
+        // Demo mode: Enable controls and auto-rotate
+        controlsRef.current.enableRotate = true
+        controlsRef.current.enablePan = true
+        controlsRef.current.enableZoom = true
+        
+        // Stop rotation when a piece is selected
+        controlsRef.current.autoRotate = selectedPiece === null
+        
+        // Slow down rotation when hovering
+        if (hoveredPiece && !selectedPiece) {
+          controlsRef.current.autoRotateSpeed = 0.05
+        } else {
+          controlsRef.current.autoRotateSpeed = 0.25
+        }
       }
     }
-  }, [selectedPiece, hoveredPiece])
+  }, [gameMode, playerColor, selectedPiece, hoveredPiece, camera])
 
   return (
     <>

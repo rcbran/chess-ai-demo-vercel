@@ -23,8 +23,8 @@ interface SelectedPiece {
 const App = () => {
   // Game mode state
   const [gameMode, setGameMode] = useState<GameMode>('demo')
-  // playerColor will be used in Feature 4 for camera locking
-  const [_playerColor, _setPlayerColor] = useState<Color | null>(null)
+  // playerColor determines camera angle in play mode (default to white)
+  const [playerColor, setPlayerColor] = useState<Color | null>(null)
   
   // Demo mode state
   const [selectedPiece, setSelectedPiece] = useState<SelectedPiece | null>(null)
@@ -37,7 +37,8 @@ const App = () => {
   // Game mode handlers
   const handlePlayButtonClick = useCallback(() => {
     setGameMode('play')
-    // TODO: Feature 4 - Add side selection and camera locking
+    // Default to white for now (side selection can be added later)
+    setPlayerColor('white')
   }, [])
 
   const handlePieceClick = useCallback((
@@ -130,6 +131,7 @@ const App = () => {
             selectedPiece={selectedPiece?.meshName ?? null}
             hoveredPiece={hoveredPiece}
             gameMode={gameMode}
+            playerColor={playerColor}
           />
           
           {/* Post-processing effects */}
