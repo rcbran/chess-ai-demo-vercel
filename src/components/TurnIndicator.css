@@ -1,11 +1,14 @@
-/* Turn Indicator - Shows current turn status at top of screen */
-.turn-indicator {
+/* Container for turn indicator (centered at top) */
+.turn-indicator-container {
   position: fixed;
-  top: 60px;
+  top: 40px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 150;
-  
+}
+
+/* Turn Indicator - Shows current turn status at top of screen */
+.turn-indicator {
   padding: 10px 24px;
   border-radius: 24px;
   
@@ -77,7 +80,7 @@
   }
 }
 
-/* Game Over state */
+/* Game Over state - Victory (yellow/gold) */
 .turn-indicator.game-over {
   background: rgba(255, 200, 100, 0.2);
   border-color: rgba(255, 200, 100, 0.4);
@@ -89,22 +92,83 @@
   font-size: 16px;
 }
 
+/* Game Over state - Loss (red) */
+.turn-indicator.game-over-loss {
+  background: rgba(255, 80, 80, 0.2);
+  border-color: rgba(255, 80, 80, 0.4);
+  padding: 12px 28px;
+}
+
+.turn-indicator.game-over-loss .turn-text {
+  color: rgba(255, 120, 120, 0.95);
+  font-size: 16px;
+}
+
+/* Game Record display - top left corner */
+.game-record {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 150;
+  
+  padding: 12px 16px;
+  border-radius: 12px;
+  
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  
+  font-family: 'Orbitron', sans-serif;
+  
+  animation: fadeIn 0.3s ease-out;
+}
+
+.game-record .record-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+.game-record .record-row:last-child {
+  margin-bottom: 0;
+}
+
+.game-record .record-label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.game-record .record-value {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+  min-width: 20px;
+}
+
 /* Fade in animation */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(-10px);
+    transform: translateY(-10px);
   }
   to {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    transform: translateY(0);
   }
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+  .turn-indicator-container {
+    top: 30px;
+  }
+  
   .turn-indicator {
-    top: 50px;
     padding: 8px 18px;
   }
   
@@ -114,6 +178,17 @@
   
   .thinking-dots .dot {
     font-size: 12px;
+  }
+  
+  .game-record {
+    top: 15px;
+    left: 15px;
+    padding: 10px 14px;
+  }
+  
+  .game-record .record-label,
+  .game-record .record-value {
+    font-size: 11px;
   }
 }
 

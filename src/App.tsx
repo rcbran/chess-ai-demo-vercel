@@ -2,7 +2,7 @@ import { Suspense, useState, useCallback, useRef, useEffect } from 'react'
 import { AboutModal, AboutButton } from './components/AboutModal'
 import { SideSelectionModal } from './components/SideSelectionModal'
 import { GameControls } from './components/ExitPlayButton'
-import { TurnIndicator } from './components/TurnIndicator'
+import { TurnIndicator, type GameRecord } from './components/TurnIndicator'
 import { Canvas } from '@react-three/fiber'
 import { Scene } from './components/Scene'
 import { InfoPanel } from './components/InfoPanel'
@@ -12,7 +12,7 @@ import { Effects } from './components/Effects'
 import { AnimatedBackground, AmbientParticles } from './components/AnimatedBackground'
 import { pieceData, type PieceType } from './data/pieceData'
 import type { Color, GameState, Position } from './game/types'
-import { initializeGameState, getValidMoves, getPieceAt, makeMove, gameStateToFen } from './game/chessEngine'
+import { initializeGameState, getValidMoves, getPieceAt, makeMove, gameStateToFen, positionToSquare } from './game/chessEngine'
 import { StockfishAI } from './game/ai'
 import './App.css'
 
@@ -23,6 +23,33 @@ interface SelectedPiece {
   color: 'white' | 'black'
   meshName: string
   side: 'left' | 'right'
+}
+
+const STORAGE_KEY = 'chess-ai-game-record'
+
+const loadGameRecord = (): GameRecord => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      return {
+        wins: parsed.wins ?? 0,
+        losses: parsed.losses ?? 0,
+        draws: parsed.draws ?? 0,
+      }
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return { wins: 0, losses: 0, draws: 0 }
+}
+
+const saveGameRecord = (record: GameRecord): void => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(record))
+  } catch {
+    // Ignore storage errors
+  }
 }
 
 const App = () => {
@@ -46,6 +73,10 @@ const App = () => {
   const [hoveredPiece, setHoveredPiece] = useState<string | null>(null)
   const [isAboutOpen, setIsAboutOpen] = useState(false)
   const closeTimeoutRef = useRef<number | null>(null)
+  
+  // Win/loss tracking
+  const [gameRecord, setGameRecord] = useState<GameRecord>(loadGameRecord)
+  const gameEndedRef = useRef(false)
 
   // Cleanup Stockfish on unmount
   useEffect(() => {
@@ -89,6 +120,7 @@ const App = () => {
     setGameState(newGameState)
     setSelectedSquare(null)
     setValidMoves([])
+    gameEndedRef.current = false
   }, [])
 
   const handleCloseSideSelection = useCallback(() => {
@@ -126,6 +158,7 @@ const App = () => {
     setValidMoves([])
     setIsMoveInProgress(false)
     setIsAIThinking(false)
+    gameEndedRef.current = false
     
     // Reset Stockfish for new game
     if (stockfishRef.current) {
@@ -196,9 +229,40 @@ const App = () => {
     }
   }, [gameMode, selectedPiece, isClosing, handleClosePanel])
 
+  // Helper to update game record when game ends
+  const updateRecordForGameEnd = useCallback((newGameState: GameState, currentPlayerColor: Color) => {
+    if (gameEndedRef.current) return
+    
+    if (newGameState.isCheckmate) {
+      gameEndedRef.current = true
+      const isPlayerWin = newGameState.currentTurn !== currentPlayerColor
+      
+      setGameRecord(prev => {
+        const updated = {
+          ...prev,
+          wins: prev.wins + (isPlayerWin ? 1 : 0),
+          losses: prev.losses + (isPlayerWin ? 0 : 1),
+        }
+        saveGameRecord(updated)
+        return updated
+      })
+    } else if (newGameState.isStalemate) {
+      gameEndedRef.current = true
+      
+      setGameRecord(prev => {
+        const updated = { ...prev, draws: prev.draws + 1 }
+        saveGameRecord(updated)
+        return updated
+      })
+    }
+  }, [])
+
   // Handle square clicks in play mode
   const handleSquareClick = useCallback((position: Position) => {
     if (!gameState || gameMode !== 'play' || isMoveInProgress || isAIThinking) return
+    
+    // Don't allow interaction if game is over
+    if (gameState.isCheckmate || gameState.isStalemate) return
     
     // Only allow interaction on player's turn
     if (gameState.currentTurn !== playerColor) return
@@ -220,6 +284,15 @@ const App = () => {
       setSelectedSquare(position)
       const moves = getValidMoves(gameState, position)
       setValidMoves(moves)
+      
+      // Debug: Log why piece might not have moves
+      if (moves.length === 0) {
+        const piece = getPieceAt(gameState.board, position)
+        console.log(`[Chess Debug] ${piece?.type} at ${positionToSquare(position)} has no valid moves.`)
+        console.log(`[Chess Debug] King in check: ${gameState.isCheck}`)
+        console.log(`[Chess Debug] Current turn: ${gameState.currentTurn}`)
+      }
+      
       return
     }
     
@@ -245,6 +318,11 @@ const App = () => {
         }
         
         setGameState(newGameState)
+        
+        // Update record if game ended
+        if (playerColor) {
+          updateRecordForGameEnd(newGameState, playerColor)
+        }
       } catch (error) {
         console.error('Move execution failed:', error)
         setIsMoveInProgress(false)
@@ -256,7 +334,7 @@ const App = () => {
     // Case 3: Clicking elsewhere - deselect
     setSelectedSquare(null)
     setValidMoves([])
-  }, [gameState, gameMode, playerColor, selectedSquare, validMoves, isMoveInProgress, isAIThinking])
+  }, [gameState, gameMode, playerColor, selectedSquare, validMoves, isMoveInProgress, isAIThinking, updateRecordForGameEnd])
 
   // Handle animation complete callback from Scene
   const handleMoveAnimationComplete = useCallback(async () => {
@@ -300,6 +378,9 @@ const App = () => {
           setIsAIThinking(false) // Show "Your turn" as soon as AI selects move
           const newGameState = makeMove(gameState, aiMove.from, aiMove.to)
           setGameState(newGameState)
+          
+          // Update record if game ended
+          updateRecordForGameEnd(newGameState, playerColor)
         } else {
           setIsAIThinking(false)
         }
@@ -308,7 +389,7 @@ const App = () => {
         setIsAIThinking(false)
       }
     }
-  }, [gameState, playerColor])
+  }, [gameState, playerColor, updateRecordForGameEnd])
 
   return (
     <div className="app-container">
@@ -368,13 +449,15 @@ const App = () => {
         isPlayerTurn={gameState?.currentTurn === playerColor}
         isAIThinking={isAIThinking}
         isGameOver={gameState?.isCheckmate || gameState?.isStalemate || false}
+        isPlayerLoss={gameState?.isCheckmate && gameState.currentTurn === playerColor}
         gameOverMessage={
           gameState?.isCheckmate 
-            ? (gameState.currentTurn === playerColor ? 'Checkmate! AI wins!' : 'Checkmate! You win!')
+            ? (gameState.currentTurn === playerColor ? 'Checkmate!' : 'Checkmate! You win!')
             : gameState?.isStalemate 
               ? 'Stalemate! Draw!'
               : undefined
         }
+        record={gameRecord}
         hidden={gameMode === 'demo'}
       />
       

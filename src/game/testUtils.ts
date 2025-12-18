@@ -213,3 +213,4 @@ export const TEST_POSITIONS = {
   /** Empty board with just kings */
   KINGS_ONLY: '4k3/8/8/8/8/8/8/4K3 w - - 0 1',
 } as const
+

@@ -47,3 +47,4 @@ export interface GameState {
 }
 
 export type SquareNotation = string // e.g., "e4", "a8"
+
