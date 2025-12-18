@@ -376,3 +376,4 @@ describe('GLTF position verification', () => {
     expect(e7.z).toBeCloseTo(0.1447, 3)
   })
 })
+

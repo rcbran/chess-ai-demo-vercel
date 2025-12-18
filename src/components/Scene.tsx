@@ -619,6 +619,11 @@ export const Scene = ({
     
     // PLAY MODE: Handle piece selection and move targeting
     if (gameMode === 'play' && onSquareClick) {
+      // Don't allow clicks if game is over
+      if (gameState && (gameState.isCheckmate || gameState.isStalemate)) {
+        return
+      }
+      
       // Get the clicked position in world coordinates and convert to board position
       const clickPoint = event.point
       const position = worldPositionToPosition(clickPoint.x, clickPoint.z)
@@ -665,6 +670,11 @@ export const Scene = ({
     if (target && target.name.startsWith('piece_')) {
       // In play mode, track hover for both selection feedback and capture indicators
       if (gameMode === 'play' && gameState) {
+        // Don't allow hover effects if game is over
+        if (gameState.isCheckmate || gameState.isStalemate) {
+          return
+        }
+        
         const pieceColor = getPieceColorFromName(target.name)
         
         // Track hover position for capture indicator feedback (any piece on valid move square)

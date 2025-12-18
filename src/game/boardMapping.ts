@@ -281,3 +281,4 @@ export const getAllInitialMeshSquares = (): [string, SquareNotation][] => {
     return [meshName, p.square]
   })
 }
+
