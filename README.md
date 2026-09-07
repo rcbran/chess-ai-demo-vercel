@@ -2,7 +2,7 @@
 
 An interactive 3D chess set built with React and Three.js. Play against a Stockfish AI opponent or explore pieces in demo mode to learn about their movement rules, value, and special abilities.
 
-![Chess Demo](https://img.shields.io/badge/React-19-blue) ![Three.js](https://img.shields.io/badge/Three.js-0.182-green) ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)
+![Chess Demo](https://img.shields.io/badge/React-19-blue) ![Three.js](https://img.shields.io/badge/Three.js-0.185-green) ![TypeScript](https://img.shields.io/badge/TypeScript-6.0-blue)
 
 ## Features
 
@@ -10,7 +10,7 @@ An interactive 3D chess set built with React and Three.js. Play against a Stockf
 - **Two Game Modes**:
   - **Demo Mode** - Explore pieces, learn rules, and see movement patterns
   - **Play Mode** - Play against Stockfish AI with full chess rules
-- **AI Opponent** - Stockfish 17.1 engine with configurable difficulty
+- **AI Opponent** - Stockfish 18 engine with configurable difficulty
 - **Interactive Pieces** - Hover over pieces to highlight them, click to select and see valid moves
 - **Move Execution** - Smooth 3D animations for piece movement and captures
 - **Visual Feedback** - Highlights for selected pieces, valid moves, captures, and check
@@ -37,8 +37,8 @@ An interactive 3D chess set built with React and Three.js. Play against a Stockf
 
 ### Prerequisites
 
-- Node.js 20.19+ or 22.12+
-- Bun (recommended) or npm/yarn
+- Node.js 24 LTS
+- Bun 1.3.4 (the committed lockfile and CI use Bun)
 
 ### Installation
 

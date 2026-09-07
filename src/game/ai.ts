@@ -49,7 +49,7 @@ export class StockfishAI {
       try {
         // Load from public folder - files are copied there during install
         // This ensures the WASM file is available in production
-        this.worker = new Worker('/stockfish/stockfish-17.1-lite-single-03e3232.js')
+        this.worker = new Worker('/stockfish/stockfish-18-lite-single.js')
         
         let initialized = false
         let ready = false
